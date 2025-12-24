@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Recommendation System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🍎 AI-Powered Food Recommendation</h1>
+            <p>Get personalized food recommendations based on your health condition</p>
+        </header>
+
+        <div class="card">
+            <form id="recommendationForm">
+                <div class="form-group">
+                    <label for="diseaseName">Disease/Health Condition *</label>
+                    <input 
+                        type="text" 
+                        id="diseaseName" 
+                        name="diseaseName" 
+                        placeholder="e.g., Diabetes, Hypertension, Gastritis"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="diseaseType">Disease Type</label>
+                    <select id="diseaseType" name="diseaseType">
+                        <option value="chronic">Chronic (Long-term)</option>
+                        <option value="acute">Acute (Short-term)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="severity">Severity (Optional)</label>
+                    <select id="severity" name="severity">
+                        <option value="">Select severity</option>
+                        <option value="mild">Mild</option>
+                        <option value="moderate">Moderate</option>
+                        <option value="severe">Severe</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="aiProvider">AI Provider</label>
+                    <select id="aiProvider" name="aiProvider">
+                        <option value="openai">OpenAI (ChatGPT)</option>
+                        <option value="claude">Claude AI</option>
+                        <option value="gemini">Google Gemini</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn-primary" id="submitBtn">
+                    Get Recommendations
+                </button>
+            </form>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Getting recommendations from AI...</p>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results" class="results" style="display: none;">
+            <div class="card">
+                <h2>📋 Recommendations for <span id="diseaseName-result"></span></h2>
+                <p class="ai-provider">Powered by: <span id="aiProvider-result"></span></p>
+
+                <div class="recommendations-grid">
+                    <!-- Foods to Eat -->
+                    <div class="recommendation-section foods-to-eat">
+                        <h3>✅ Foods You Should Eat</h3>
+                        <ul id="foodsToEat-list"></ul>
+                    </div>
+
+                    <!-- Foods to Avoid -->
+                    <div class="recommendation-section foods-to-avoid">
+                        <h3>❌ Foods to Avoid</h3>
+                        <ul id="foodsToAvoid-list"></ul>
+                    </div>
+                </div>
+
+                <!-- Additional Notes -->
+                <div class="additional-notes" id="additionalNotes" style="display: none;">
+                    <h3>📝 Additional Notes</h3>
+                    <p id="notes-content"></p>
+                </div>
+
+                <!-- Raw Response (if JSON parsing failed) -->
+                <div class="raw-response" id="rawResponse" style="display: none;">
+                    <h3>📄 Full Recommendation</h3>
+                    <div id="raw-content"></div>
+                </div>
+
+                <button class="btn-secondary" onclick="resetForm()">
+                    Make Another Query
+                </button>
+            </div>
+        </div>
+
+        <!-- Error Section -->
+        <div id="error" class="error" style="display: none;">
+            <div class="card error-card">
+                <h3>⚠️ Error</h3>
+                <p id="error-message"></p>
+                <button class="btn-secondary" onclick="resetForm()">Try Again</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Built with ❤️ using Spring Boot & AI APIs | OOP Project 2024</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
