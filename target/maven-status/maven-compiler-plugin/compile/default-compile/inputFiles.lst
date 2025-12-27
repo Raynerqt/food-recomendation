@@ -1,21 +1,20 @@
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\model\ChronicDisease.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\model\AcuteDisease.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\entity\RecommendationEntity.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\FoodRecommendationApplication.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\repository\UserRepository.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\service\AIService.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\util\HTTPClient.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\controller\RecommendationController.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\model\FoodRecommendation.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\repository\RecommendationRepository.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\repository\DiseaseRepository.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\service\GeminiAIService.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\service\MyUserDetailsService.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\util\APIClient.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\config\SecurityConfig.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\model\Disease.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\service\RecommendationService.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\controller\AuthController.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\entity\UserEntity.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\config\WebConfig.java
-D:\LEC_SMSTER 3\OOP\food-recomendation\src\main\java\com\foodrec\entity\DiseaseEntity.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\repository\DiseaseRepository.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\service\RecommendationService.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\controller\RecommendationController.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\entity\RecommendationEntity.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\FoodRecommendationApplication.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\repository\UserRepository.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\config\SecurityConfig.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\entity\UserEntity.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\repository\RecommendationRepository.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\model\AcuteDisease.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\service\GeminiAIService.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\model\FoodRecommendation.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\util\HTTPClient.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\service\MyUserDetailsService.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\model\ChronicDisease.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\config\WebConfig.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\entity\DiseaseEntity.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\util\APIClient.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\service\AIService.java
+C:\Users\USER\Documents\Tugas Sem 3\OOP\food-recomendation\src\main\java\com\foodrec\model\Disease.java
