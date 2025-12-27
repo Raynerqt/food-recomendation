@@ -11,48 +11,41 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-@Service("geminiAIService")
+@Service
 public class GeminiAIService extends AIService {
 
-    @Value("${gemini.api.key}") // Pastikan key ada di application.properties, jangan hardcode di sini!
+    @Value("${gemini.api.key}")
     private String geminiApiKey;
 
     public GeminiAIService(APIClient apiClient) {
         super(apiClient);
-        // Ganti ke model yang lebih baru dan cepat
-        this.model = "gemini-1.5-flash";
+        // PERUBAHAN PENTING: Kita pakai 'gemini-pro' (1.0) yang paling stabil.
+        // 'gemini-1.5-flash' sering error 404 jika akun belum disetting billing/region.
+        this.model = "gemini-2.5-flash";
     }
 
     @Override
     protected String buildPrompt(Disease disease) {
-        // Kita tambahkan instruksi agar Gemini tidak menggunakan Markdown
-        return String.format(
-            "You are a nutritionist AI assistant. A patient has been diagnosed with %s (%s). " +
-            "Please provide:\n" +
-            "1. A list of foods they SHOULD eat (minimum 5 items)\n" +
-            "2. A list of foods they SHOULD AVOID (minimum 5 items)\n" +
-            "3. Brief explanation for each recommendation\n" +
-            "4. Additional dietary notes\n\n" +
-            "IMPORTANT: Return ONLY raw JSON without Markdown formatting (no ```json ... ``` wrapper). " +
-            "Structure: { 'foodsToEat': [], 'foodsToAvoid': [], 'additionalNotes': '' }",
-            disease.getName(),
-            disease.getCategory()
-        );
+        // Gabungkan string dengan (+) biasa agar aman dari error format %s
+        String diseaseName = (disease.getName() != null) ? disease.getName() : "Unknown";
+        
+        return "You are a nutritionist AI. Patient diagnosis: " + diseaseName + ". " +
+               "Provide dietary recommendations in STRICT JSON format. " +
+               "NO Markdown, NO ```json wrappers. Just raw JSON.\n\n" +
+               "JSON Structure:\n" +
+               "{ \"foodsToEat\": [\"item1\", \"item2\", \"item3\"], " +
+               "\"foodsToAvoid\": [\"item1\", \"item2\", \"item3\"], " +
+               "\"additionalNotes\": \"Brief explanation\" }";
     }
 
     @Override
     protected String callAI(String prompt) throws Exception {
-        // 1. URL Construction
-        this.apiUrl = String.format(
-            "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent",
-            this.model,
-            geminiApiKey
-        );
+        // URL Bersih tanpa karakter aneh
+        // Format URL untuk Gemini Pro di API v1beta
+        this.apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + geminiApiKey;
 
-        // 2. Build Request Body
+        // Build Request Body
         JsonObject requestBody = new JsonObject();
         JsonArray contents = new JsonArray();
         JsonObject content = new JsonObject();
@@ -65,38 +58,38 @@ public class GeminiAIService extends AIService {
         contents.add(content);
         requestBody.add("contents", contents);
 
-        // Opsi tambahan: Mengatur strict JSON response (Hanya untuk model gemini-1.5 ke atas)
-        // JsonObject generationConfig = new JsonObject();
-        // generationConfig.addProperty("response_mime_type", "application/json");
-        // requestBody.add("generationConfig", generationConfig);
-
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
-        headers.put("X-goog-api-key", geminiApiKey);
 
-        // 3. Call API
+        // Call API
         String response = apiClient.sendPostRequest(
             this.apiUrl,
             requestBody.toString(),
             headers
         );
 
-        if (!apiClient.isLastRequestSuccessful()) {
-            throw new Exception("Gemini API Error: " + apiClient.getLastStatusCode() + " - " + response);
-        }
-
-        // 4. Extract Text
-        JsonObject responseJson = JsonParser.parseString(response).getAsJsonObject();
-        JsonArray candidates = responseJson.getAsJsonArray("candidates");
-
-        if (candidates != null && candidates.size() > 0) {
-            JsonObject candidate = candidates.get(0).getAsJsonObject();
-            JsonObject contentObj = candidate.getAsJsonObject("content");
-            JsonArray partsArray = contentObj.getAsJsonArray("parts");
-
-            if (partsArray != null && partsArray.size() > 0) {
-                return partsArray.get(0).getAsJsonObject().get("text").getAsString();
+        // Parsing Response
+        try {
+            JsonObject responseJson = JsonParser.parseString(response).getAsJsonObject();
+            
+            // Cek Error
+            if (responseJson.has("error")) {
+                throw new Exception("Google AI Error: " + responseJson.get("error").toString());
             }
+
+            JsonArray candidates = responseJson.getAsJsonArray("candidates");
+            if (candidates != null && candidates.size() > 0) {
+                // Struktur JSON Gemini Pro sedikit berbeda kadang-kadang, kita ambil text-nya
+                return candidates.get(0).getAsJsonObject()
+                        .getAsJsonObject("content")
+                        .getAsJsonArray("parts")
+                        .get(0).getAsJsonObject()
+                        .get("text").getAsString();
+            }
+        } catch (Exception e) {
+            // Debugging: Jika error, print respon aslinya ke console server
+            System.out.println("DEBUG RESPONSE: " + response);
+            throw new Exception("Gagal baca respon AI: " + e.getMessage());
         }
 
         throw new Exception("No content in Gemini response");
@@ -107,33 +100,27 @@ public class GeminiAIService extends AIService {
         FoodRecommendation recommendation = new FoodRecommendation(disease, getProviderName());
 
         try {
-            // STEP PENTING: Bersihkan Markdown blocks jika AI bandel memberikannya
             String cleanJson = cleanMarkdown(response);
-
             JsonObject jsonResponse = JsonParser.parseString(cleanJson).getAsJsonObject();
 
             if (jsonResponse.has("foodsToEat")) {
-                JsonArray foodsToEat = jsonResponse.getAsJsonArray("foodsToEat");
-                for (int i = 0; i < foodsToEat.size(); i++) {
-                    recommendation.addFoodToEat(foodsToEat.get(i).getAsString());
-                }
+                JsonArray arr = jsonResponse.getAsJsonArray("foodsToEat");
+                for (int i = 0; i < arr.size(); i++) recommendation.addFoodToEat(arr.get(i).getAsString());
             }
 
             if (jsonResponse.has("foodsToAvoid")) {
-                JsonArray foodsToAvoid = jsonResponse.getAsJsonArray("foodsToAvoid");
-                for (int i = 0; i < foodsToAvoid.size(); i++) {
-                    recommendation.addFoodToAvoid(foodsToAvoid.get(i).getAsString());
-                }
+                JsonArray arr = jsonResponse.getAsJsonArray("foodsToAvoid");
+                for (int i = 0; i < arr.size(); i++) recommendation.addFoodToAvoid(arr.get(i).getAsString());
             }
 
             if (jsonResponse.has("additionalNotes")) {
                 recommendation.setAdditionalNotes(jsonResponse.get("additionalNotes").getAsString());
             }
+            
+            recommendation.setReason("Generated by " + this.model);
 
         } catch (Exception e) {
-            System.err.println("JSON Parse Error: " + e.getMessage());
-            // Fallback: simpan raw text jika gagal parsing JSON
-            recommendation.setRecommendations(response); 
+            recommendation.setAdditionalNotes(response);
         }
 
         return recommendation;
@@ -144,20 +131,12 @@ public class GeminiAIService extends AIService {
         return "Google Gemini (" + this.model + ")";
     }
 
-    // Helper untuk membersihkan ```json ... ```
     private String cleanMarkdown(String text) {
         if (text == null) return "";
-        // Hapus ```json di awal dan ``` di akhir
         String cleaned = text.trim();
-        if (cleaned.startsWith("```json")) {
-            cleaned = cleaned.substring(7);
-        } else if (cleaned.startsWith("```")) {
-            cleaned = cleaned.substring(3);
-        }
-        
-        if (cleaned.endsWith("```")) {
-            cleaned = cleaned.substring(0, cleaned.length() - 3);
-        }
+        if (cleaned.startsWith("```json")) cleaned = cleaned.substring(7);
+        else if (cleaned.startsWith("```")) cleaned = cleaned.substring(3);
+        if (cleaned.endsWith("```")) cleaned = cleaned.substring(0, cleaned.length() - 3);
         return cleaned.trim();
     }
 }

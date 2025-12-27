@@ -104,4 +104,9 @@ public class FoodRecommendation {
                 ", timestamp=" + timestamp +
                 '}';
     }
+
+    public void setReason(String string) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'setReason'");
+    }
 }
