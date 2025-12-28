@@ -3,10 +3,6 @@ package com.foodrec.entity;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
-/**
- * User Entity (Optional - for authentication)
- * Demonstrates: JPA Entity, User Management
- */
 @Entity
 @Table(name = "users")
 public class UserEntity {
@@ -22,8 +18,13 @@ public class UserEntity {
     private String email;
     
     @Column(nullable = false)
-    private String password;  // Should be hashed (BCrypt)
+    private String password;
     
+    // --- TAMBAHAN KITA (Agar Controller tidak error) ---
+    @Column(name = "role")
+    private String role;
+    // ----------------------------------------------------
+
     @Column(name = "full_name", length = 200)
     private String fullName;
     
@@ -42,20 +43,20 @@ public class UserEntity {
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
     
-    // Constructors
     public UserEntity() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
     
-    public UserEntity(String username, String email, String password) {
+    // Constructor kita update sedikit biar support role
+    public UserEntity(String username, String email, String password, String role) {
         this();
         this.username = username;
         this.email = email;
         this.password = password;
+        this.role = role;
     }
     
-    // JPA Callbacks
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -67,94 +68,40 @@ public class UserEntity {
         updatedAt = LocalDateTime.now();
     }
     
-    // Getters and Setters
-    public Long getId() {
-        return id;
-    }
+    // --- GETTERS & SETTERS ---
+    // (Getter Setter lama biarkan saja, tambahkan yang Role)
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
     
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
     
-    public String getUsername() {
-        return username;
-    }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
     
-    public void setUsername(String username) {
-        this.username = username;
-    }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+
+    // GETTER SETTER ROLE (PENTING!)
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+
+    public String getFullName() { return fullName; }
+    public void setFullName(String fullName) { this.fullName = fullName; }
     
-    public String getEmail() {
-        return email;
-    }
+    public String getPhoneNumber() { return phoneNumber; }
+    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
     
-    public void setEmail(String email) {
-        this.email = email;
-    }
+    public Boolean getIsActive() { return isActive; }
+    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
     
-    public String getPassword() {
-        return password;
-    }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     
-    public void setPassword(String password) {
-        this.password = password;
-    }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     
-    public String getFullName() {
-        return fullName;
-    }
-    
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-    
-    public String getPhoneNumber() {
-        return phoneNumber;
-    }
-    
-    public void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
-    }
-    
-    public Boolean getIsActive() {
-        return isActive;
-    }
-    
-    public void setIsActive(Boolean isActive) {
-        this.isActive = isActive;
-    }
-    
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-    
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-    
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-    
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-    
-    public LocalDateTime getLastLogin() {
-        return lastLogin;
-    }
-    
-    public void setLastLogin(LocalDateTime lastLogin) {
-        this.lastLogin = lastLogin;
-    }
-    
-    @Override
-    public String toString() {
-        return "UserEntity{" +
-                "id=" + id +
-                ", username='" + username + '\'' +
-                ", email='" + email + '\'' +
-                ", isActive=" + isActive +
-                '}';
-    }
+    public LocalDateTime getLastLogin() { return lastLogin; }
+    public void setLastLogin(LocalDateTime lastLogin) { this.lastLogin = lastLogin; }
 }

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - NutriCare</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+    <ul class="particles">
+        <li></li><li></li><li></li><li></li><li></li><li></li>
+    </ul>
+
+    <div class="glass-panel fade-in" style="margin-top: 10vh;">
+        <div style="font-size: 3rem; margin-bottom: 15px;">🥗</div>
+        <h2 style="margin-bottom: 10px;">Welcome Back</h2>
+        <p style="opacity: 0.8; margin-bottom: 30px;">Login to access your personalized health plan.</p>
+
+        <div th:if="${param.error}" style="background: rgba(239, 83, 80, 0.2); padding: 10px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ef5350;">
+            Username or Password incorrect
+        </div>
+        <div th:if="${param.logout}" style="background: rgba(102, 187, 106, 0.2); padding: 10px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #66bb6a;">
+            Logged out successfully
+        </div>
+
+        <form action="/login" method="post">
+            <input type="text" name="username" class="glass-input" placeholder="Username" required autofocus>
+            <input type="password" name="password" class="glass-input" placeholder="Password" required>
+            
+            <button type="submit" class="btn-glow">Sign In</button>
+        </form>
+
+        <p style="margin-top: 25px; font-size: 0.9rem;">
+            Don't have an account? <a href="/register" style="color: #81C784; text-decoration: none; font-weight: bold;">Join Now</a>
+        </p>
+    </div>
+
+</body>
+</html>

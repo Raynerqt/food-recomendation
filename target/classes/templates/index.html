@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - NutriCare</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+    <ul class="particles">
+        <li></li><li></li><li></li><li></li><li></li><li></li>
+    </ul>
+
+    <nav class="navbar">
+        <h1>🥦 NutriCare AI</h1>
+        <div class="user-info">
+            <span style="font-weight: 600;" th:text="${'Hi, ' + username}">Hello, User</span>
+            <a href="/login?logout" class="btn-logout">Logout</a>
+        </div>
+    </nav>
+
+    <div class="glass-dashboard fade-in">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h2 style="font-size: 2.5rem; margin-bottom: 10px; color: var(--primary);">Heal with Nature</h2>
+            <p style="opacity: 0.8; color: var(--text-dark);">Enter your symptoms, get AI-powered nutrition advice.</p>
+        </div>
+
+        <div id="inputSection">
+            <form id="recommendationForm">
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight:600;">Health Condition</label>
+                    <input type="text" id="diseaseName" name="diseaseName" class="glass-input" placeholder="e.g. Flu, Maag, Hypertension..." required>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight:600;">Duration</label>
+                        <select id="diseaseType" name="diseaseType" class="glass-input">
+                            <option value="acute">Acute (Short-term)</option>
+                            <option value="chronic">Chronic (Long-term)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight:600;">AI Doctor</label>
+                        <select id="aiProvider" name="aiProvider" class="glass-input">
+                            <option value="gemini">Google Gemini</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-glow" style="margin-top: 20px;">Analyze Symptoms ✨</button>
+            </form>
+        </div>
+
+        <div id="loading" style="display: none; text-align: center; margin-top: 40px;">
+            <div style="font-size: 3rem; animation: spin 1s infinite;">🥘</div>
+            <p>AI is cooking your menu...</p>
+        </div>
+
+        <div id="results" style="display: none; margin-top: 40px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 30px;">
+            
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h2 style="color: var(--primary); margin-bottom: 5px;">Analysis Result</h2>
+                <p style="opacity: 0.7; font-size: 1.1rem;">
+                    For Condition: <strong id="diseaseName-result" style="color: var(--text-dark);">...</strong>
+                </p>
+            </div>
+
+            <div class="result-grid">
+                <div class="info-box box-eat fade-in" style="animation-delay: 0.1s;">
+                    <div class="box-header">
+                        <span>🥗</span> Recommended
+                    </div>
+                    <ul id="foodsToEat-list"></ul>
+                </div>
+
+                <div class="info-box box-avoid fade-in" style="animation-delay: 0.2s;">
+                    <div class="box-header">
+                        <span>🚫</span> Avoid
+                    </div>
+                    <ul id="foodsToAvoid-list"></ul>
+                </div>
+            </div>
+
+            <div class="info-box box-note fade-in" style="animation-delay: 0.3s;">
+                <div class="box-header">
+                    <span>💡</span> Doctor's Note
+                </div>
+                <div id="notes-content" class="note-content"></div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                 <button onclick="resetForm()" class="btn-glow" style="width: auto; padding: 12px 30px; background: var(--text-dark);">Analyze Another Condition 🔄</button>
+            </div>
+
+        </div> </div> <script th:src="@{/script.js}"></script>
+</body>
+</html>

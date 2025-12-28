@@ -1,176 +1,153 @@
-// API Configuration
 const API_BASE_URL = 'http://localhost:8080/api';
 
-// DOM Elements
 const form = document.getElementById('recommendationForm');
 const loading = document.getElementById('loading');
 const results = document.getElementById('results');
-const error = document.getElementById('error');
-const submitBtn = document.getElementById('submitBtn');
+const inputSection = document.getElementById('inputSection');
 
-// Form Submit Handler
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    // Get form data
-    const formData = new FormData(form);
-    const data = {
-        diseaseName: formData.get('diseaseName'),
-        diseaseType: formData.get('diseaseType'),
-        aiProvider: formData.get('aiProvider'),
-    };
-    
-    // Add severity if provided
-    const severity = formData.get('severity');
-    if (severity) {
-        data.severity = severity;
-    }
-    
-    // Show loading, hide results and errors
-    showLoading();
-    hideResults();
-    hideError();
-    
-    try {
-        // Call API
-        const response = await fetch(`${API_BASE_URL}/recommend/detailed`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
-        });
-        
-        const result = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(result.error || 'Failed to get recommendations');
+if (form) {
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const data = {
+            diseaseName: formData.get('diseaseName'),
+            diseaseType: formData.get('diseaseType'),
+            aiProvider: formData.get('aiProvider')
+        };
+
+        if (inputSection) inputSection.style.display = 'none';
+        if (loading) loading.style.display = 'block';
+        if (results) results.style.display = 'none';
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/recommend`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include', 
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Failed');
+            displayResults(result);
+
+        } catch (err) {
+            alert("⚠️ Error: " + err.message);
+            resetForm();
+        } finally {
+            if (loading) loading.style.display = 'none';
         }
-        
-        // Display results
-        displayResults(result);
-        
-    } catch (err) {
-        console.error('Error:', err);
-        showError(err.message || 'Something went wrong. Please try again.');
-    } finally {
-        hideLoading();
-    }
-});
-
-// Show Loading
-function showLoading() {
-    loading.style.display = 'block';
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Processing...';
+    });
 }
 
-// Hide Loading
-function hideLoading() {
-    loading.style.display = 'none';
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Get Recommendations';
-}
-
-// Show Results
 function displayResults(data) {
-    // Set disease name and AI provider
-    document.getElementById('diseaseName-result').textContent = 
-        data.disease ? data.disease.name : 'Unknown';
-    document.getElementById('aiProvider-result').textContent = 
-        data.aiProvider || 'Unknown';
+    if (results) results.style.display = 'block';
     
-    // Display foods to eat
-    const foodsToEatList = document.getElementById('foodsToEat-list');
-    foodsToEatList.innerHTML = '';
-    
-    if (data.foodsToEat && data.foodsToEat.length > 0) {
-        data.foodsToEat.forEach(food => {
-            const li = document.createElement('li');
-            li.textContent = food;
-            foodsToEatList.appendChild(li);
-        });
-    } else {
-        foodsToEatList.innerHTML = '<li>No specific recommendations</li>';
+    const diseaseTitle = document.getElementById('diseaseName-result');
+    if (diseaseTitle) {
+        diseaseTitle.textContent = (data.disease ? data.disease.name : 'Unknown Condition');
+        // Scroll halus ke bagian hasil
+        results.scrollIntoView({ behavior: 'smooth' });
     }
-    
-    // Display foods to avoid
-    const foodsToAvoidList = document.getElementById('foodsToAvoid-list');
-    foodsToAvoidList.innerHTML = '';
-    
-    if (data.foodsToAvoid && data.foodsToAvoid.length > 0) {
-        data.foodsToAvoid.forEach(food => {
-            const li = document.createElement('li');
-            li.textContent = food;
-            foodsToAvoidList.appendChild(li);
-        });
-    } else {
-        foodsToAvoidList.innerHTML = '<li>No specific restrictions</li>';
-    }
-    
-    // Display additional notes
-    const additionalNotesDiv = document.getElementById('additionalNotes');
+
+    const fillList = (elementId, items) => {
+        const list = document.getElementById(elementId);
+        if (list) {
+            list.innerHTML = '';
+            if (items && items.length > 0) {
+                items.forEach(item => {
+                    const li = document.createElement('li');
+                    li.textContent = cleanListText(item); // Pakai pembersih sederhana untuk list
+                    list.appendChild(li);
+                });
+            } else {
+                list.innerHTML = '<li>No specific data provided by AI.</li>';
+            }
+        }
+    };
+
+    fillList('foodsToEat-list', data.foodsToEat);
+    fillList('foodsToAvoid-list', data.foodsToAvoid);
+
+    // --- BAGIAN PENTING: FORMAT NOTES ---
     const notesContent = document.getElementById('notes-content');
-    
-    if (data.additionalNotes) {
-        notesContent.textContent = data.additionalNotes;
-        additionalNotesDiv.style.display = 'block';
-    } else {
-        additionalNotesDiv.style.display = 'none';
+    if (notesContent) {
+        let rawNotes = data.additionalNotes || "Stay hydrated and rest well.";
+        // Gunakan fungsi formatter canggih kita, lalu masukkan sebagai HTML
+        notesContent.innerHTML = formatDoctorNotes(rawNotes);
     }
-    
-    // Display raw response if available
-    const rawResponseDiv = document.getElementById('rawResponse');
-    const rawContent = document.getElementById('raw-content');
-    
-    if (data.recommendations) {
-        rawContent.textContent = data.recommendations;
-        rawResponseDiv.style.display = 'block';
-    } else {
-        rawResponseDiv.style.display = 'none';
+}
+
+// Fungsi Pembersih Sederhana untuk List Item (Makanan)
+function cleanListText(text) {
+    if (!text) return "";
+    return text.replace(/\["|"]/g, '').replace(/[{"}]/g, '').trim();
+}
+
+// 🔥 FUNGSI CANGGIH: Merapikan Catatan Dokter (Markdown -> HTML) 🔥
+function formatDoctorNotes(text) {
+    if (!text) return "<p>No specific notes available.</p>";
+
+    // [FIX UTAMA]: Jika text terlihat seperti JSON object penuh (seperti di screenshotmu)
+    // Contoh: {"foodsToEat": [...], "additionalNotes": "INI YANG KITA MAU"}
+    if (text.trim().startsWith('{')) {
+        try {
+            // Coba parsing sebagai JSON
+            const jsonObject = JSON.parse(text);
+            // Jika berhasil, ambil hanya bagian 'additionalNotes'
+            if (jsonObject.additionalNotes) {
+                text = jsonObject.additionalNotes;
+            }
+        } catch (e) {
+            // Jika gagal parse JSON, mungkin formatnya rusak
+            // Kita coba bersihkan manual pakai Regex
+            console.log("JSON Parse error in notes, switching to regex cleanup");
+            
+            // Cari teks setelah "additionalNotes": "..."
+            const match = text.match(/"additionalNotes"\s*:\s*"([^"]+)"/);
+            if (match && match[1]) {
+                text = match[1];
+            }
+        }
     }
-    
-    // Show results with animation
-    results.style.display = 'block';
-    results.classList.add('fade-in');
-    
-    // Scroll to results
-    results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Lanjut ke formatting standar (Markdown -> HTML)
+    // 1. Bersihkan sisa-sisa karakter JSON jika masih ada
+    text = text.replace(/[{}"[\]]/g, ''); 
+    text = text.replace(/additionalNotes:/g, ''); // Hapus label key
+
+    // 2. Bold text (**teks**)
+    let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    // 3. Pisahkan paragraf
+    let lines = formatted.split('\n');
+    let htmlOutput = '';
+    let inList = false;
+
+    lines.forEach(line => {
+        let trimmedLine = line.trim();
+        if (trimmedLine.length === 0) return;
+
+        // Deteksi List Bullet (* atau -)
+        if (trimmedLine.startsWith('* ') || trimmedLine.startsWith('- ')) {
+            if (!inList) { htmlOutput += '<ul>'; inList = true; }
+            htmlOutput += `<li>${trimmedLine.substring(2)}</li>`;
+        } else {
+            if (inList) { htmlOutput += '</ul>'; inList = false; }
+            // Deteksi kalimat panjang, jadikan paragraf
+            htmlOutput += `<p>${trimmedLine}</p>`;
+        }
+    });
+    if (inList) htmlOutput += '</ul>';
+
+    return htmlOutput;
 }
 
-// Hide Results
-function hideResults() {
-    results.style.display = 'none';
-}
-
-// Show Error
-function showError(message) {
-    document.getElementById('error-message').textContent = message;
-    error.style.display = 'block';
-    error.classList.add('fade-in');
-    error.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-// Hide Error
-function hideError() {
-    error.style.display = 'none';
-}
-
-// Reset Form
 function resetForm() {
-    form.reset();
-    hideResults();
-    hideError();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (form) form.reset();
+    if (inputSection) inputSection.style.display = 'block';
+    if (results) results.style.display = 'none';
+    if (loading) loading.style.display = 'none';
+    // Scroll balik ke atas
+    if (inputSection) inputSection.scrollIntoView({ behavior: 'smooth' });
 }
-
-// Test API Connection on page load
-window.addEventListener('load', async () => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/health`);
-        const data = await response.json();
-        console.log('API Status:', data);
-    } catch (err) {
-        console.warn('API not reachable:', err);
-    }
-});
