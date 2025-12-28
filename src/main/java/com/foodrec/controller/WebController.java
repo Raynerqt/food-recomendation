@@ -36,14 +36,59 @@ public class WebController {
     public String home(Model model, Principal principal) {
         if (principal != null) {
             String username = principal.getName();
-            model.addAttribute("username", username);
+            UserEntity user = userRepository.findByUsername(username).orElse(null);
+            
+            if (user != null) {
+                // LOGIKA: Jika umur masih kosong, WAJIB isi profil dulu
+                if (user.getAge() == null) {
+                    return "redirect:/profile";
+                }
+                model.addAttribute("username", user.getUsername()); // Pakai nama asli/username
+            }
         } else {
-            model.addAttribute("username", "Guest");
+            return "redirect:/login";
         }
         return "index";
     }
+
+    @GetMapping("/profile")
+    public String showProfile(Model model, Principal principal) {
+        if (principal == null) return "redirect:/login";
+        
+        String username = principal.getName();
+        UserEntity user = userRepository.findByUsername(username).orElseThrow();
+        
+        model.addAttribute("user", user); // Kirim data user ke HTML
+        return "profile";
+    }
     // -----------------------------------------------------
 
+    @PostMapping("/profile")
+    public String saveProfile(
+            @RequestParam Integer age,
+            @RequestParam String gender,
+            @RequestParam(required = false) Double weight,
+            @RequestParam(required = false) Double height,
+            @RequestParam(required = false) String medicalHistory,
+            @RequestParam(required = false) String allergies,
+            Principal principal) {
+        
+        if (principal != null) {
+            String username = principal.getName();
+            UserEntity user = userRepository.findByUsername(username).orElseThrow();
+            
+            user.setAge(age);
+            user.setGender(gender);
+            user.setWeight(weight);
+            user.setHeight(height);
+            user.setMedicalHistory(medicalHistory);
+            user.setAllergies(allergies);
+            
+            userRepository.save(user); // Simpan ke DB
+        }
+        
+        return "redirect:/"; // Balik ke dashboard setelah simpan
+    }
     @PostMapping("/register")
     public String processRegister(
             @RequestParam String username, 

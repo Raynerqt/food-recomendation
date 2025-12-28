@@ -17,12 +17,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
  * REST Controller for Food Recommendation
- * FIXED: Sekarang sinkron dengan RecommendationService yang butuh UserEntity
+ * UPDATED: Sudah support User Profile Context & Severity
  */
 @RestController
 @RequestMapping("/api")
@@ -31,9 +30,8 @@ public class RecommendationController {
 
     private final AIService aiService;
     private final RecommendationService recommendationService;
-    private final UserRepository userRepository; // ✅ Tambahan Wajib
+    private final UserRepository userRepository;
 
-    // ✅ Constructor Injection yang Benar
     @Autowired
     public RecommendationController(AIService aiService, 
                                     RecommendationService recommendationService,
@@ -51,11 +49,12 @@ public class RecommendationController {
         return ResponseEntity.ok(response);
     }
 
-    // ================== ENDPOINT UTAMA ==================
+    // ================== ENDPOINT UTAMA (Fixed) ==================
 
     @PostMapping("/recommend")
     public ResponseEntity<?> getRecommendation(@RequestBody Map<String, String> request, Principal principal) {
         try {
+            // 1. Ambil Input Dasar
             String diseaseName = request.get("diseaseName");
             String diseaseType = request.getOrDefault("diseaseType", "chronic");
 
@@ -63,24 +62,52 @@ public class RecommendationController {
                 return ResponseEntity.badRequest().body(createErrorResponse("Disease name is required"));
             }
 
-            // 1. Buat Object Disease
-            Disease disease;
-            if ("acute".equalsIgnoreCase(diseaseType)) {
-                disease = new AcuteDisease(diseaseName);
-            } else {
-                disease = new ChronicDisease(diseaseName);
+            // 2. Ambil User Profile (Untuk memperkaya Prompt AI)
+            UserEntity currentUser = getCurrentUser(principal);
+            String userProfileInfo = "";
+            
+            if (currentUser != null) {
+                // Format data diri menjadi kalimat agar AI paham
+                userProfileInfo = String.format(
+                    "Patient Profile: [Age: %s, Gender: %s, Weight: %s kg, Height: %s cm, Allergies: %s, Medical History: %s]. ",
+                    (currentUser.getAge() != null ? currentUser.getAge() : "Unknown"),
+                    (currentUser.getGender() != null ? currentUser.getGender() : "Unknown"),
+                    (currentUser.getWeight() != null ? currentUser.getWeight() : "-"),
+                    (currentUser.getHeight() != null ? currentUser.getHeight() : "-"),
+                    (currentUser.getAllergies() != null ? currentUser.getAllergies() : "None"),
+                    (currentUser.getMedicalHistory() != null ? currentUser.getMedicalHistory() : "None")
+                );
             }
 
-            // 2. Tanya AI
+            // 3. Ambil Severity dari Slider
+            String severityLevel = request.getOrDefault("severity", "5");
+
+            // 4. Modifikasi Nama Penyakit untuk Prompt AI
+            // Kita "titip" data profil di dalam nama penyakit supaya terbawa ke AIService
+            String contextForAI = String.format(
+                "%s (Severity Level: %s/10). %s", 
+                diseaseName, severityLevel, userProfileInfo
+            );
+
+            // 5. Buat Object Disease dengan Konteks Lengkap
+            Disease disease;
+            if ("acute".equalsIgnoreCase(diseaseType)) {
+                disease = new AcuteDisease(contextForAI);
+            } else {
+                disease = new ChronicDisease(contextForAI);
+            }
+
+            // 6. Panggil AI
+            // AI akan membaca: "Maag (Severity: 8/10). Patient Profile: [Age: 25, Allergies: Seafood...]"
             FoodRecommendation recommendation = aiService.getRecommendation(disease);
 
-            // 3. Ambil User yang Login (Kalau ada)
-            UserEntity currentUser = getCurrentUser(principal);
+            // 7. [PENTING] Kembalikan Nama Penyakit ke Aslinya
+            // Supaya saat disimpan di database, namanya tetap "Maag", bukan kalimat panjang tadi
+            recommendation.getDisease().setName(diseaseName);
 
-            // 4. Simpan ke Database (Kirim 2 Parameter: Rekomendasi + User)
+            // 8. Simpan ke Database
             try {
-                // ✅ INI PERBAIKANNYA: Kirim 'currentUser' ke service
-                RecommendationEntity savedEntity = recommendationService.saveRecommendation(recommendation, currentUser);
+                recommendationService.saveRecommendation(recommendation, currentUser);
                 System.out.println("✅ Saved recommendation for user: " + (currentUser != null ? currentUser.getUsername() : "Guest"));
             } catch (Exception dbError) {
                 System.err.println("⚠️ Database save failed: " + dbError.getMessage());
@@ -97,6 +124,8 @@ public class RecommendationController {
         }
     }
 
+    // ================== ENDPOINT DETAILED ==================
+    
     @PostMapping("/recommend/detailed")
     public ResponseEntity<?> getDetailedRecommendation(@RequestBody Map<String, Object> request, Principal principal) {
         try {
@@ -107,29 +136,19 @@ public class RecommendationController {
                 return ResponseEntity.badRequest().body(createErrorResponse("Disease name is required"));
             }
 
-            // Logic Disease Detail
+            // Untuk endpoint detailed, kita pakai logika sederhana dulu (tanpa profil)
+            // Atau kamu bisa copy logika profil di atas ke sini jika mau
             Disease disease;
             if ("acute".equalsIgnoreCase(diseaseType)) {
-                AcuteDisease acuteDisease = new AcuteDisease(diseaseName);
-                if (request.containsKey("recoveryDays")) {
-                    acuteDisease.setExpectedRecoveryDays(Integer.parseInt(request.get("recoveryDays").toString()));
-                }
-                if (request.containsKey("severity")) acuteDisease.setSeverity((String) request.get("severity"));
-                disease = acuteDisease;
+                disease = new AcuteDisease(diseaseName);
             } else {
-                ChronicDisease chronicDisease = new ChronicDisease(diseaseName);
-                if (request.containsKey("managementType")) chronicDisease.setManagementType((String) request.get("managementType"));
-                if (request.containsKey("severity")) chronicDisease.setSeverity((String) request.get("severity"));
-                disease = chronicDisease;
+                disease = new ChronicDisease(diseaseName);
             }
 
-            // Tanya AI
             FoodRecommendation recommendation = aiService.getRecommendation(disease);
-
-            // Ambil User & Simpan
             UserEntity currentUser = getCurrentUser(principal);
+            
             try {
-                // ✅ FIX JUGA DI SINI
                 recommendationService.saveRecommendation(recommendation, currentUser);
             } catch (Exception dbError) {
                 System.err.println("⚠️ Database save failed: " + dbError.getMessage());
@@ -143,7 +162,7 @@ public class RecommendationController {
         }
     }
 
-    // ================== HISTORY & STATS ==================
+    // ================== HISTORY & HELPER ==================
 
     @GetMapping("/history")
     public ResponseEntity<?> getHistory(
@@ -151,31 +170,15 @@ public class RecommendationController {
             @RequestParam(defaultValue = "10") int size) {
         try {
             Page<RecommendationEntity> history = recommendationService.getAllRecommendations(page, size);
-            
-            // Bungkus response manual biar rapi
             Map<String, Object> response = new HashMap<>();
             response.put("content", history.getContent());
             response.put("totalPages", history.getTotalPages());
             response.put("totalElements", history.getTotalElements());
-            
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(createErrorResponse(e.getMessage()));
         }
     }
-
-    // Helper untuk ambil user dari Principal
-    private UserEntity getCurrentUser(Principal principal) {
-        if (principal != null) {
-            return userRepository.findByUsername(principal.getName()).orElse(null);
-        }
-        return null;
-    }
-
-    // Endpoint lainnya (GetById, Search, Stats, Delete) tetap sama,
-    // karena mereka tidak memanggil saveRecommendation.
-    // Copy paste saja method-method di bawah ini dari file lama jika butuh, 
-    // atau biarkan method di atas yang paling krusial.
 
     @GetMapping("/history/{id}")
     public ResponseEntity<?> getRecommendationById(@PathVariable Long id) {
@@ -188,6 +191,14 @@ public class RecommendationController {
     public ResponseEntity<?> deleteRecommendation(@PathVariable Long id) {
         recommendationService.deleteRecommendation(id);
         return ResponseEntity.ok(Map.of("message", "Deleted successfully"));
+    }
+
+    // Helper untuk ambil user dari Principal
+    private UserEntity getCurrentUser(Principal principal) {
+        if (principal != null) {
+            return userRepository.findByUsername(principal.getName()).orElse(null);
+        }
+        return null;
     }
 
     private Map<String, String> createErrorResponse(String message) {

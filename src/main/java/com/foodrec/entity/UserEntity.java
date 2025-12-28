@@ -24,6 +24,23 @@ public class UserEntity {
     @Column(name = "role")
     private String role;
     // ----------------------------------------------------
+    @Column(name = "age")
+    private Integer age;
+
+    @Column(name = "gender")
+    private String gender; // Male/Female
+
+    @Column(name = "height")
+    private Double height; // cm
+
+    @Column(name = "weight")
+    private Double weight; // kg
+
+    @Column(name = "allergies", columnDefinition = "TEXT")
+    private String allergies; // Contoh: Kacang, Seafood
+
+    @Column(name = "medical_history", columnDefinition = "TEXT")
+    private String medicalHistory; // Contoh: Diabetes, Hipertensi
 
     @Column(name = "full_name", length = 200)
     private String fullName;
@@ -56,6 +73,24 @@ public class UserEntity {
         this.password = password;
         this.role = role;
     }
+
+    public Integer getAge() { return age; }
+    public void setAge(Integer age) { this.age = age; }
+
+    public String getGender() { return gender; }
+    public void setGender(String gender) { this.gender = gender; }
+
+    public Double getHeight() { return height; }
+    public void setHeight(Double height) { this.height = height; }
+
+    public Double getWeight() { return weight; }
+    public void setWeight(Double weight) { this.weight = weight; }
+
+    public String getAllergies() { return allergies; }
+    public void setAllergies(String allergies) { this.allergies = allergies; }
+
+    public String getMedicalHistory() { return medicalHistory; }
+    public void setMedicalHistory(String medicalHistory) { this.medicalHistory = medicalHistory; }
     
     @PrePersist
     protected void onCreate() {

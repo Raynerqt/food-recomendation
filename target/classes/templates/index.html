@@ -15,7 +15,8 @@
     <nav class="navbar">
         <h1>🥦 NutriCare AI</h1>
         <div class="user-info">
-            <span style="font-weight: 600;" th:text="${'Hi, ' + username}">Hello, User</span>
+            <span style="font-weight: 600; margin-right: 10px;" th:text="${'Hi, ' + username}">Hello</span>
+            <a href="/profile" style="margin-right: 10px; font-size: 1.2rem; text-decoration: none;" title="Edit Profile">👤</a>
             <a href="/login?logout" class="btn-logout">Logout</a>
         </div>
     </nav>
@@ -40,6 +41,20 @@
                             <option value="acute">Acute (Short-term)</option>
                             <option value="chronic">Chronic (Long-term)</option>
                         </select>
+                        <div style="margin-top: 20px;">
+                            <label style="display: block; margin-bottom: 8px; font-weight:600;">
+                                Pain/Severity Level: <span id="severityValue" style="color: var(--primary);">5</span>/10
+                            </label>
+                            <input type="range" id="severity" name="severity" min="1" max="10" value="5" class="glass-input" 
+                                style="padding: 0; cursor: pointer;" 
+                                oninput="document.getElementById('severityValue').textContent = this.value">
+                            
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; opacity: 0.7; margin-top: -10px;">
+                                <span>Mild</span>
+                                <span>Moderate</span>
+                                <span>Severe</span>
+                            </div>
+                        </div>
                     </div>
                     <div>
                         <label style="display: block; margin-bottom: 8px; font-weight:600;">AI Doctor</label>
