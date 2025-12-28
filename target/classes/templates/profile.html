@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Health Profile</title>
+    <link rel="stylesheet" th:href="@{/style.css}">
+</head>
+<body>
+    <ul class="particles">
+        <li></li><li></li><li></li><li></li><li></li>
+    </ul>
+
+    <nav class="navbar">
+        <h1>🥦 NutriCare Profile</h1>
+        <div class="user-info">
+            <a href="/" style="margin-right: 15px; color: var(--primary); text-decoration: none; font-weight: 600;">← Back to Dashboard</a>
+            <a href="/login?logout" class="btn-logout">Logout</a>
+        </div>
+    </nav>
+
+    <div class="glass-panel fade-in" style="max-width: 600px; margin-top: 40px;">
+        <h2 style="color: var(--primary); margin-bottom: 10px;">Complete Your Profile 📋</h2>
+        <p style="margin-bottom: 30px; opacity: 0.8;">
+            AI needs this data to give you safe & accurate recommendations.
+        </p>
+
+        <form action="/profile" method="post">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; text-align: left;">
+                
+                <div>
+                    <label style="font-weight: 600;">Age</label>
+                    <input type="number" name="age" class="glass-input" th:value="${user.age}" placeholder="e.g. 25" required>
+                </div>
+
+                <div>
+                    <label style="font-weight: 600;">Gender</label>
+                    <select name="gender" class="glass-input">
+                        <option value="Male" th:selected="${user.gender == 'Male'}">Male</option>
+                        <option value="Female" th:selected="${user.gender == 'Female'}">Female</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style="font-weight: 600;">Weight (kg)</label>
+                    <input type="number" step="0.1" name="weight" class="glass-input" th:value="${user.weight}" placeholder="e.g. 60">
+                </div>
+                <div>
+                    <label style="font-weight: 600;">Height (cm)</label>
+                    <input type="number" step="0.1" name="height" class="glass-input" th:value="${user.height}" placeholder="e.g. 170">
+                </div>
+            </div>
+
+            <div style="text-align: left; margin-top: 10px;">
+                <label style="font-weight: 600;">Existing Conditions / History</label>
+                <input type="text" name="medicalHistory" class="glass-input" th:value="${user.medicalHistory}" placeholder="e.g. Diabetes Type 2, Hypertension, None">
+            </div>
+
+            <div style="text-align: left; margin-top: 10px;">
+                <label style="font-weight: 600;">Food Allergies</label>
+                <input type="text" name="allergies" class="glass-input" th:value="${user.allergies}" placeholder="e.g. Peanuts, Seafood, Gluten, None">
+            </div>
+
+            <button type="submit" class="btn-glow" style="margin-top: 20px;">Save Profile ✅</button>
+        </form>
+    </div>
+</body>
+</html>

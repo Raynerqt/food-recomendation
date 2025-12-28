@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join - NutriCare</title>
+    <link rel="stylesheet" th:href="@{/style.css}">
+</head>
+<body>
+
+    <ul class="particles">
+        <li></li><li></li><li></li><li></li><li></li><li></li>
+    </ul>
+
+    <div class="glass-panel fade-in" style="margin-top: 5vh;">
+        <div style="font-size: 3rem; margin-bottom: 10px;">🌱</div>
+        <h2 style="margin-bottom: 5px;">Start Healing</h2>
+        <p style="opacity: 0.8; margin-bottom: 25px;">Create your personal health profile.</p>
+
+        <form action="/register" method="post">
+            <input type="text" name="username" class="glass-input" placeholder="Choose Username" required>
+            
+            <input type="email" name="email" class="glass-input" placeholder="Email Address (Required)" required>
+            
+            <input type="password" name="password" class="glass-input" placeholder="Create Password" required>
+            
+            <button type="submit" class="btn-glow">Create Account ➔</button>
+        </form>
+
+        <p style="margin-top: 20px; font-size: 0.9rem;">
+            Already have an account? <a href="/login" style="color: #43A047; font-weight: bold; text-decoration: none;">Login here</a>
+        </p>
+    </div>
+
+</body>
+</html>

@@ -1,31 +1,60 @@
 package com.foodrec.config;
 
+import com.foodrec.service.MyUserDetailsService; // Import ini
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
+@EnableWebSecurity
 public class SecurityConfig {
 
+    @Autowired
+    private MyUserDetailsService userDetailsService; // Inject service kita
+
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    // --- TAMBAHKAN BEAN INI AGAR SPRING TAHU CARA CEK PASSWORD ---
+    @Bean
+    public AuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userDetailsService); // Pakai service kita
+        provider.setPasswordEncoder(passwordEncoder()); // Pakai encoder BCrypt
+        return provider;
+    }
+    // -------------------------------------------------------------
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        // ... (Kode SecurityFilterChain kamu yang lama biarkan saja) ...
         http
-            // 1. Matikan CSRF agar mudah testing API lewat Postman/Frontend
             .csrf(csrf -> csrf.disable())
-            
-            // 2. Aturan: Semua halaman WAJIB Login
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/style.css", "/script.js", "/images/**", "/register", "/login").permitAll()
                 .anyRequest().authenticated()
             )
-            
-            // 3. GUNAKAN HALAMAN LOGIN BAWAAN SPRING (Yang "tiba-tiba muncul" itu)
-            // Jangan gunakan .loginPage("/login"), biarkan default saja.
-            .formLogin(Customizer.withDefaults())
-            
-            // 4. Logout juga default
-            .logout(Customizer.withDefaults());
+            .formLogin(form -> form
+                .loginPage("/login")
+                .defaultSuccessUrl("/", true)
+                .permitAll()
+            )
+            .logout(logout -> logout
+                .logoutUrl("/logout")
+                .logoutSuccessUrl("/login?logout")
+                .invalidateHttpSession(true)
+                .deleteCookies("JSESSIONID")
+                .permitAll()
+            );
 
         return http.build();
     }

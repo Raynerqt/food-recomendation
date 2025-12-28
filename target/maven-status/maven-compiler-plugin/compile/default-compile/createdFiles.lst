@@ -19,4 +19,3 @@ com\foodrec\service\MyUserDetailsService.class
 com\foodrec\util\APIClient.class
 com\foodrec\service\RecommendationService.class
 com\foodrec\util\HTTPClient.class
-com\foodrec\controller\AuthController.class

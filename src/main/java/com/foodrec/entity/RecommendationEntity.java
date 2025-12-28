@@ -48,6 +48,19 @@ public class RecommendationEntity {
     
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id") // Ini akan membuat kolom 'user_id' di tabel recommendations
+    private UserEntity user;
+
+    // Jangan lupa Getter & Setter-nya
+    public UserEntity getUser() {
+        return user;
+    }
+
+    public void setUser(UserEntity user) {
+        this.user = user;
+    }
     
     // Constructors
     public RecommendationEntity() {
