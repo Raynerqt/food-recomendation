@@ -25,6 +25,40 @@ public class GeminiAIService extends AIService {
         this.model = "gemini-2.5-flash";
     }
 
+    public Map<String, String> analyzeCondition(String diseaseName, String userFeedback) {
+        // 1. Buat Prompt Khusus Analisa
+        String prompt = "You are a medical assistant. A patient diagnosed with '" + diseaseName + "' " +
+                "reported this follow-up condition after following diet: '" + userFeedback + "'.\n\n" +
+                "Analyze if they need a doctor immediately or if they are recovering.\n" +
+                "Return STRICT JSON ONLY (No Markdown):\n" +
+                "{\n" +
+                "  \"status\": \"RECOVERED\" (if getting better) OR \"DOCTOR_REQUIRED\" (if worse/critical/new severe symptoms) OR \"MONITORING\" (if neutral),\n" +
+                "  \"message\": \"Your short advice to the user based on their condition\"\n" +
+                "}";
+
+        try {
+            // 2. Panggil AI (Reuse method callAI yang sudah ada)
+            String rawResponse = callAI(prompt); 
+            
+            // 3. Bersihkan JSON
+            String cleanJson = cleanMarkdown(rawResponse);
+            JsonObject json = JsonParser.parseString(cleanJson).getAsJsonObject();
+            
+            Map<String, String> result = new HashMap<>();
+            // Ambil value dengan aman (cek null)
+            result.put("status", json.has("status") ? json.get("status").getAsString().toUpperCase() : "MONITORING");
+            result.put("message", json.has("message") ? json.get("message").getAsString() : "Please consult a doctor.");
+            
+            return result;
+
+        } catch (Exception e) {
+            // Fallback jika AI error / Gagal parsing
+            Map<String, String> errorResult = new HashMap<>();
+            errorResult.put("status", "DOCTOR_REQUIRED"); // Cari aman, suruh ke dokter
+            errorResult.put("message", "System cannot analyze clearly. Please consult a doctor immediately for safety.");
+            return errorResult;
+        }
+    }
     @Override
     protected String buildPrompt(Disease disease) {
         // Gabungkan string dengan (+) biasa agar aman dari error format %s

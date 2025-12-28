@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.security.Principal; // PENTING: Untuk menangkap user login
 
 /**
  * REST Controller for Food Recommendation
@@ -26,10 +27,9 @@ import java.util.Map;
 @CrossOrigin(origins = "*") // Allow frontend to access
 public class RecommendationController {
 
-    private final AIService aiService; // Kita gunakan satu service saja (Gemini)
+    private final AIService aiService;
     private final RecommendationService recommendationService;
 
-    // Constructor Injection (Tanpa @Qualifier agar tidak error)
     @Autowired
     public RecommendationController(AIService aiService, RecommendationService recommendationService) {
         this.aiService = aiService;
@@ -52,18 +52,17 @@ public class RecommendationController {
      * POST /api/recommend
      */
     @PostMapping("/recommend")
-    public ResponseEntity<?> getRecommendation(@RequestBody Map<String, String> request) {
+    public ResponseEntity<?> getRecommendation(@RequestBody Map<String, String> request, Principal principal) {
         try {
             String diseaseName = request.get("diseaseName");
             String diseaseType = request.getOrDefault("diseaseType", "chronic");
-            // String aiProvider = request.getOrDefault("aiProvider", "gemini"); // Tidak dipakai, otomatis Gemini
 
             if (diseaseName == null || diseaseName.trim().isEmpty()) {
                 return ResponseEntity.badRequest()
                     .body(createErrorResponse("Disease name is required"));
             }
 
-            // Create Disease object based on type
+            // Create Disease object
             Disease disease;
             if ("acute".equalsIgnoreCase(diseaseType)) {
                 disease = new AcuteDisease(diseaseName);
@@ -71,24 +70,35 @@ public class RecommendationController {
                 disease = new ChronicDisease(diseaseName);
             }
 
-            // Get recommendation (Langsung pakai aiService yang tersedia)
+            // 1. Get recommendation dari AI
             FoodRecommendation recommendation = aiService.getRecommendation(disease);
 
-            // Save to database
+            // 2. Ambil Username
+            String currentUsername = (principal != null) ? principal.getName() : null;
+
+            // 3. Save to database 
+            RecommendationEntity savedEntity = null;
             try {
-                // Pastikan method saveRecommendation ada di RecommendationService Anda
-                RecommendationEntity savedEntity = recommendationService.saveRecommendation(recommendation);
+                // Kirim username ke service
+                savedEntity = recommendationService.saveRecommendation(recommendation, currentUsername);
+                
                 System.out.println("✅ Saved to database with ID: " + savedEntity.getId());
+                if (currentUsername != null) System.out.println("👤 Owner: " + currentUsername);
+                
             } catch (Exception dbError) {
+                dbError.printStackTrace();
                 System.err.println("⚠️ Failed to save to database: " + dbError.getMessage());
-                // Kita tidak throw error agar user tetap dapat respon rekomendasi walau DB gagal
             }
 
-            return ResponseEntity.ok(recommendation);
+            // 4. Response
+            Map<String, Object> response = new HashMap<>();
+            if (savedEntity != null) response.put("id", savedEntity.getId());
+            response.put("data", recommendation); 
+
+            return ResponseEntity.ok(response);
 
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest()
-                .body(createErrorResponse(e.getMessage()));
+            return ResponseEntity.badRequest().body(createErrorResponse(e.getMessage()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -101,51 +111,48 @@ public class RecommendationController {
      * POST /api/recommend/detailed
      */
     @PostMapping("/recommend/detailed")
-    public ResponseEntity<?> getDetailedRecommendation(@RequestBody Map<String, Object> request) {
+    // UPDATE: Tambahkan Principal principal di sini juga
+    public ResponseEntity<?> getDetailedRecommendation(@RequestBody Map<String, Object> request, Principal principal) {
         try {
             String diseaseName = (String) request.get("diseaseName");
             String diseaseType = (String) request.getOrDefault("diseaseType", "chronic");
 
             if (diseaseName == null || diseaseName.trim().isEmpty()) {
-                return ResponseEntity.badRequest()
-                    .body(createErrorResponse("Disease name is required"));
+                return ResponseEntity.badRequest().body(createErrorResponse("Disease name is required"));
             }
 
-            // Create Disease object with additional details
             Disease disease;
             if ("acute".equalsIgnoreCase(diseaseType)) {
                 AcuteDisease acuteDisease = new AcuteDisease(diseaseName);
-
                 if (request.containsKey("recoveryDays")) {
-                    acuteDisease.setExpectedRecoveryDays(
-                        Integer.parseInt(request.get("recoveryDays").toString())
-                    );
+                    acuteDisease.setExpectedRecoveryDays(Integer.parseInt(request.get("recoveryDays").toString()));
                 }
                 if (request.containsKey("severity")) {
                     acuteDisease.setSeverity((String) request.get("severity"));
                 }
-
                 disease = acuteDisease;
             } else {
                 ChronicDisease chronicDisease = new ChronicDisease(diseaseName);
-
                 if (request.containsKey("managementType")) {
                     chronicDisease.setManagementType((String) request.get("managementType"));
                 }
                 if (request.containsKey("severity")) {
                     chronicDisease.setSeverity((String) request.get("severity"));
                 }
-
                 disease = chronicDisease;
             }
 
             // Get recommendation
             FoodRecommendation recommendation = aiService.getRecommendation(disease);
 
+            // UPDATE: Ambil Username
+            String currentUsername = (principal != null) ? principal.getName() : null;
+
             // Save to database
             try {
-                RecommendationEntity savedEntity = recommendationService.saveRecommendation(recommendation);
-                System.out.println("✅ Saved to database with ID: " + savedEntity.getId());
+                // UPDATE: Kirim username ke service
+                RecommendationEntity savedEntity = recommendationService.saveRecommendation(recommendation, currentUsername);
+                System.out.println("✅ Saved detailed rec to database with ID: " + savedEntity.getId());
             } catch (Exception dbError) {
                 System.err.println("⚠️ Failed to save to database: " + dbError.getMessage());
             }
@@ -158,29 +165,87 @@ public class RecommendationController {
         }
     }
 
+    /**
+     * Endpoint untuk User Melapor Kondisi (Follow Up)
+     */
+    @PostMapping("/recommend/feedback/{id}")
+    public ResponseEntity<?> submitFeedback(@PathVariable Long id, @RequestBody Map<String, String> request) {
+        try {
+            var optionalRec = recommendationService.getRecommendationById(id);
+            if (optionalRec.isEmpty()) return ResponseEntity.notFound().build();
+            
+            RecommendationEntity entity = optionalRec.get();
+
+            if (entity.isSessionClosed()) {
+                return ResponseEntity.badRequest().body(createErrorResponse("This session is already closed."));
+            }
+
+            String userCondition = request.get("condition");
+            if (userCondition == null || userCondition.isEmpty()) {
+                 return ResponseEntity.badRequest().body(createErrorResponse("Condition is required"));
+            }
+
+            Map<String, String> aiAnalysis = aiService.analyzeCondition(entity.getDiseaseName(), userCondition);
+
+            entity.setUserFeedback(userCondition);
+            entity.setAiFinalAdvice(aiAnalysis.get("message"));
+            
+            String status = aiAnalysis.get("status");
+            
+            if ("DOCTOR_REQUIRED".equalsIgnoreCase(status)) {
+                entity.setFollowUpStatus("DOCTOR_REQUIRED");
+                entity.setSessionClosed(true);
+            } else if ("RECOVERED".equalsIgnoreCase(status)) {
+                entity.setFollowUpStatus("RECOVERED");
+                entity.setSessionClosed(true);
+            } else {
+                entity.setFollowUpStatus("MONITORING");
+                entity.setSessionClosed(false);
+            }
+
+            recommendationService.saveRecommendationEntity(entity);
+
+            Map<String, Object> response = new HashMap<>(aiAnalysis);
+            response.put("isSessionClosed", entity.isSessionClosed());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(createErrorResponse("Error: " + e.getMessage()));
+        }
+    }
+
     // ========== DATABASE ENDPOINTS ==========
 
     /**
      * Get all recommendation history with pagination
      */
     @GetMapping("/history")
+    // UPDATE: Tambahkan Principal principal
     public ResponseEntity<?> getHistory(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            Principal principal) {
         try {
-            Page<RecommendationEntity> history = recommendationService.getAllRecommendations(page, size);
+            // UPDATE: Ambil username
+            String currentUsername = (principal != null) ? principal.getName() : null;
+
+            // UPDATE: Kirim username ke service agar history difilter
+            Page<RecommendationEntity> history = recommendationService.getAllRecommendations(currentUsername, page, size);
 
             Map<String, Object> response = new HashMap<>();
             response.put("content", history.getContent());
             response.put("totalElements", history.getTotalElements());
             response.put("totalPages", history.getTotalPages());
-            response.put("currentPage", history.getNumber());
-            response.put("pageSize", history.getSize());
-
+            
             return ResponseEntity.ok(response);
+            
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(createErrorResponse("Failed to fetch history: " + e.getMessage()));
+                .body(createErrorResponse("Gagal mengambil history: " + e.getMessage()));
         }
     }
 
@@ -234,7 +299,6 @@ public class RecommendationController {
     public ResponseEntity<?> getStatistics() {
         try {
             Map<String, Object> stats = new HashMap<>();
-
             stats.put("totalRecommendations", recommendationService.getTotalRecommendationsCount());
 
             List<Object[]> byProvider = recommendationService.getRecommendationStatsByAiProvider();
@@ -246,12 +310,10 @@ public class RecommendationController {
 
             List<Object[]> topDiseases = recommendationService.getMostSearchedDiseases();
             stats.put("topDiseases", topDiseases);
-
             stats.put("todayCount", recommendationService.getTodayRecommendations().size());
 
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
-            // Stats sering error jika data kosong/query salah, jadi kita handle gracefull
             System.err.println("Stats error: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(createErrorResponse("Failed to fetch statistics: " + e.getMessage()));
@@ -281,9 +343,6 @@ public class RecommendationController {
         }
     }
 
-    /**
-     * Helper method to create error response
-     */
     private Map<String, String> createErrorResponse(String message) {
         Map<String, String> error = new HashMap<>();
         error.put("error", message);

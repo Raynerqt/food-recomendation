@@ -2,15 +2,17 @@ package com.foodrec.service;
 
 import com.foodrec.entity.DiseaseEntity;
 import com.foodrec.entity.RecommendationEntity;
-import com.foodrec.model.Disease;
+import com.foodrec.entity.UserEntity; // Import UserEntity
 import com.foodrec.model.FoodRecommendation;
 import com.foodrec.repository.DiseaseRepository;
 import com.foodrec.repository.RecommendationRepository;
+import com.foodrec.repository.UserRepository; // Import UserRepository
 import com.google.gson.Gson;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,159 +20,102 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Recommendation Service for Database Operations
- * Demonstrates: Service Layer, Transaction Management
- */
 @Service
-@Transactional
 public class RecommendationService {
-    
+
     private final RecommendationRepository recommendationRepository;
-    private final DiseaseRepository diseaseRepository;
-    private final Gson gson;
-    
+    private final UserRepository userRepository; // === PERUBAHAN 1: Tambah UserRepository ===
+    private final Gson gson = new Gson();
+
     @Autowired
-    public RecommendationService(
-            RecommendationRepository recommendationRepository,
-            DiseaseRepository diseaseRepository) {
+    public RecommendationService(RecommendationRepository recommendationRepository, UserRepository userRepository) {
         this.recommendationRepository = recommendationRepository;
-        this.diseaseRepository = diseaseRepository;
-        this.gson = new Gson();
+        this.userRepository = userRepository; // === PERUBAHAN 1: Inisialisasi ===
     }
-    
-    /**
-     * Save recommendation to database
-     */
-    public RecommendationEntity saveRecommendation(FoodRecommendation recommendation) {
+
+    // 1. Simpan Rekomendasi Baru (UPDATE: Terima Username)
+    public RecommendationEntity saveRecommendation(FoodRecommendation recommendation, String username) { // === PERUBAHAN 2: Parameter username ===
         RecommendationEntity entity = new RecommendationEntity();
         
-        // Map data from FoodRecommendation to Entity
-        if (recommendation.getDisease() != null) {
-            entity.setDiseaseName(recommendation.getDisease().getName());
-            entity.setDiseaseType(recommendation.getDisease().getCategory());
-            
-            // Try to find or create disease entity
-            Optional<DiseaseEntity> diseaseOpt = diseaseRepository
-                .findByNameIgnoreCase(recommendation.getDisease().getName());
-            
-            if (diseaseOpt.isPresent()) {
-                entity.setDisease(diseaseOpt.get());
-            } else {
-                // Create new disease entity
-                DiseaseEntity newDisease = new DiseaseEntity();
-                newDisease.setName(recommendation.getDisease().getName());
-                newDisease.setType(recommendation.getDisease().getCategory().equalsIgnoreCase("chronic") 
-                    ? DiseaseEntity.DiseaseType.CHRONIC 
-                    : DiseaseEntity.DiseaseType.ACUTE);
-                newDisease.setDescription(recommendation.getDisease().getDescription());
-                newDisease.setDietaryRestrictions(recommendation.getDisease().getDietaryRestrictions());
-                
-                DiseaseEntity savedDisease = diseaseRepository.save(newDisease);
-                entity.setDisease(savedDisease);
-            }
-        }
-        
+        entity.setDiseaseName(recommendation.getDisease().getName());
+        entity.setDiseaseType(recommendation.getDisease() instanceof com.foodrec.model.ChronicDisease ? "chronic" : "acute");
         entity.setAiProvider(recommendation.getAiProvider());
         
-        // Convert lists to JSON strings
-        if (recommendation.getFoodsToEat() != null && !recommendation.getFoodsToEat().isEmpty()) {
-            entity.setFoodsToEat(gson.toJson(recommendation.getFoodsToEat()));
-        }
-        
-        if (recommendation.getFoodsToAvoid() != null && !recommendation.getFoodsToAvoid().isEmpty()) {
-            entity.setFoodsToAvoid(gson.toJson(recommendation.getFoodsToAvoid()));
-        }
+        // Convert List ke JSON String
+        entity.setFoodsToEat(gson.toJson(recommendation.getFoodsToEat()));
+        entity.setFoodsToAvoid(gson.toJson(recommendation.getFoodsToAvoid()));
         
         entity.setAdditionalNotes(recommendation.getAdditionalNotes());
-        entity.setRawResponse(recommendation.getRecommendations());
-        
+        entity.setRawResponse(recommendation.getAdditionalNotes());
+
+        // === PERUBAHAN 2: LOGIKA SIMPAN USER ===
+        // Jika ada username (User sedang Login), simpan relasinya
+        if (username != null && !username.isEmpty()) {
+            Optional<UserEntity> userOptional = userRepository.findByUsername(username);
+            if (userOptional.isPresent()) {
+                entity.setUser(userOptional.get()); // Set Pemilik Rekomendasi
+            }
+        }
+        // Jika username null (Guest), user_id akan null (karena nullable=true di Entity)
+
         return recommendationRepository.save(entity);
     }
-    
-    /**
-     * Get all recommendations with pagination
-     */
-    public Page<RecommendationEntity> getAllRecommendations(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return recommendationRepository.findAllByOrderByCreatedAtDesc(pageable);
+
+    // 2. Simpan Entity Mentah (Tetap sama)
+    public RecommendationEntity saveRecommendationEntity(RecommendationEntity entity) {
+        return recommendationRepository.save(entity);
     }
-    
-    /**
-     * Get recommendation by ID
-     */
+
+    // 3. Ambil History
+    public Page<RecommendationEntity> getAllRecommendations(String username, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        
+        // LOGIKA FILTER USER
+        if (username != null && !username.isEmpty()) {
+            Optional<UserEntity> userOptional = userRepository.findByUsername(username);
+            
+            // Jika user ketemu (Login), ambil history miliknya saja
+            if (userOptional.isPresent()) {
+                return recommendationRepository.findByUserId(userOptional.get().getId(), pageable);
+            }
+        }
+
+        // === PERBAIKAN DI SINI ===
+        // Jika Guest (tidak login), kita TAMPILKAN SEMUA DATA saja dulu (Mode Testing)
+        // Agar history tetap muncul di sidebar meskipun belum login.
+        return recommendationRepository.findAll(pageable);
+    }
+
+    // 4. Ambil Satu Data berdasarkan ID
     public Optional<RecommendationEntity> getRecommendationById(Long id) {
         return recommendationRepository.findById(id);
     }
-    
-    /**
-     * Get recommendations by disease name
-     */
-    public List<RecommendationEntity> getRecommendationsByDiseaseName(String diseaseName) {
-        return recommendationRepository.findByDiseaseName(diseaseName);
-    }
-    
-    /**
-     * Get recommendations by AI provider
-     */
-    public List<RecommendationEntity> getRecommendationsByAiProvider(String aiProvider) {
-        return recommendationRepository.findByAiProvider(aiProvider);
-    }
-    
-    /**
-     * Search recommendations by keyword
-     */
+
+    // 5. Cari Berdasarkan Nama Penyakit (Bisa diupdate nanti agar search per user juga)
     public List<RecommendationEntity> searchRecommendations(String keyword) {
-        return recommendationRepository.searchByDiseaseName(keyword);
+        return recommendationRepository.findByDiseaseNameContainingIgnoreCase(keyword);
     }
-    
-    /**
-     * Get today's recommendations
-     */
-    public List<RecommendationEntity> getTodayRecommendations() {
-        return recommendationRepository.findTodayRecommendations();
-    }
-    
-    /**
-     * Get recommendations between dates
-     */
-    public List<RecommendationEntity> getRecommendationsBetweenDates(
-            LocalDateTime start, LocalDateTime end) {
-        return recommendationRepository.findByCreatedAtBetween(start, end);
-    }
-    
-    /**
-     * Get statistics - recommendations count by AI provider
-     */
-    public List<Object[]> getRecommendationStatsByAiProvider() {
-        return recommendationRepository.countByAiProvider();
-    }
-    
-    /**
-     * Get most searched diseases
-     */
-    public List<Object[]> getMostSearchedDiseases() {
-        return recommendationRepository.getMostSearchedDiseases();
-    }
-    
-    /**
-     * Get total count of recommendations
-     */
-    public long getTotalRecommendationsCount() {
-        return recommendationRepository.countAllRecommendations();
-    }
-    
-    /**
-     * Delete recommendation by ID
-     */
+
+    // 6. Hapus Data
     public void deleteRecommendation(Long id) {
         recommendationRepository.deleteById(id);
     }
     
-    /**
-     * Delete all recommendations (use carefully!)
-     */
-    public void deleteAllRecommendations() {
-        recommendationRepository.deleteAll();
+    // --- Method Tambahan untuk Statistik ---
+    
+    public List<RecommendationEntity> getTodayRecommendations() {
+        return List.of(); 
+    }
+
+    public long getTotalRecommendationsCount() {
+        return recommendationRepository.count();
+    }
+
+    public List<Object[]> getRecommendationStatsByAiProvider() {
+        return List.of();
+    }
+
+    public List<Object[]> getMostSearchedDiseases() {
+        return List.of();
     }
 }

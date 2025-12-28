@@ -17,6 +17,9 @@ import java.util.List;
 @Repository
 public interface RecommendationRepository extends JpaRepository<RecommendationEntity, Long> {
     
+    List<RecommendationEntity> findByDiseaseNameContainingIgnoreCase(String keyword);
+
+    Page<RecommendationEntity> findByUserId(Long userId, Pageable pageable);
     /**
      * Find all recommendations by disease name
      */
@@ -47,6 +50,7 @@ public interface RecommendationRepository extends JpaRepository<RecommendationEn
      */
     Page<RecommendationEntity> findAllByOrderByCreatedAtDesc(Pageable pageable);
     
+
     /**
      * Custom query - find recommendations by disease name (case-insensitive)
      */

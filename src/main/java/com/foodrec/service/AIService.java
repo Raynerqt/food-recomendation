@@ -3,6 +3,7 @@ package com.foodrec.service;
 import com.foodrec.model.Disease;
 import com.foodrec.model.FoodRecommendation;
 import com.foodrec.util.APIClient;
+import java.util.Map; // Perbaikan: Huruf 'M' harus besar
 
 /**
  * Abstract AIService Class
@@ -46,6 +47,10 @@ public abstract class AIService {
             throw new RuntimeException("Failed to get recommendation: " + e.getMessage(), e);
         }
     }
+
+    // === METHOD BARU UNTUK ANALISA KONDISI (FEEDBACK LOOP) ===
+    // Ini harus ada di sini agar Controller bisa memanggilnya
+    public abstract Map<String, String> analyzeCondition(String diseaseName, String userFeedback);
     
     /**
      * Validate disease input
@@ -115,4 +120,5 @@ public abstract class AIService {
         if (input == null) return "";
         return input.trim().replaceAll("[^a-zA-Z0-9\\s-]", "");
     }
+    
 }

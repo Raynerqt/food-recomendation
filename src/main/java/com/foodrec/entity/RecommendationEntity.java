@@ -2,10 +2,11 @@ package com.foodrec.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 /**
  * Recommendation History Entity
- * Demonstrates: JPA Entity, One-to-Many relationship
+ * Updated: Added relation to UserEntity
  */
 @Entity
 @Table(name = "recommendations")
@@ -15,6 +16,14 @@ public class RecommendationEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    // === UPDATE RELASI USER (ONE-TO-MANY) ===
+    // Kita set nullable = true DULU. 
+    // Kenapa? Karena saat ini kita belum bikin fitur login.
+    // Kalau diset false, aplikasi akan error karena belum ada user_id yang dikirim.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = true) 
+    private UserEntity user;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "disease_id")
     private DiseaseEntity disease;
@@ -29,10 +38,10 @@ public class RecommendationEntity {
     private String aiProvider;
     
     @Column(name = "foods_to_eat", columnDefinition = "TEXT")
-    private String foodsToEat;  // Stored as JSON string
+    private String foodsToEat;  
     
     @Column(name = "foods_to_avoid", columnDefinition = "TEXT")
-    private String foodsToAvoid;  // Stored as JSON string
+    private String foodsToAvoid;  
     
     @Column(name = "additional_notes", columnDefinition = "TEXT")
     private String additionalNotes;
@@ -41,12 +50,13 @@ public class RecommendationEntity {
     private String rawResponse;
     
     @Column(name = "request_data", columnDefinition = "TEXT")
-    private String requestData;  // Original request as JSON
+    private String requestData; 
     
     @Column(name = "severity", length = 50)
     private String severity;
     
     @Column(name = "created_at", nullable = false, updatable = false)
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
     
     // Constructors
@@ -75,6 +85,16 @@ public class RecommendationEntity {
     public void setId(Long id) {
         this.id = id;
     }
+
+    // === GETTER SETTER UNTUK USER ===
+    public UserEntity getUser() {
+        return user;
+    }
+
+    public void setUser(UserEntity user) {
+        this.user = user;
+    }
+    // ================================
     
     public DiseaseEntity getDisease() {
         return disease;
@@ -164,14 +184,29 @@ public class RecommendationEntity {
         this.createdAt = createdAt;
     }
     
-    @Override
-    public String toString() {
-        return "RecommendationEntity{" +
-                "id=" + id +
-                ", diseaseName='" + diseaseName + '\'' +
-                ", diseaseType='" + diseaseType + '\'' +
-                ", aiProvider='" + aiProvider + '\'' +
-                ", createdAt=" + createdAt +
-                '}';
-    }
+    // FIELD BARU FEEDBACK
+    @jakarta.persistence.Column(name = "user_feedback", length = 1000)
+    private String userFeedback;
+
+    @jakarta.persistence.Column(name = "follow_up_status")
+    private String followUpStatus;
+
+    @jakarta.persistence.Column(name = "ai_final_advice", length = 2000)
+    private String aiFinalAdvice;
+
+    @jakarta.persistence.Column(name = "is_session_closed")
+    private boolean isSessionClosed = false;
+
+    // GETTER SETTER FEEDBACK
+    public String getUserFeedback() { return userFeedback; }
+    public void setUserFeedback(String userFeedback) { this.userFeedback = userFeedback; }
+
+    public String getFollowUpStatus() { return followUpStatus; }
+    public void setFollowUpStatus(String followUpStatus) { this.followUpStatus = followUpStatus; }
+
+    public String getAiFinalAdvice() { return aiFinalAdvice; }
+    public void setAiFinalAdvice(String aiFinalAdvice) { this.aiFinalAdvice = aiFinalAdvice; }
+
+    public boolean isSessionClosed() { return isSessionClosed; }
+    public void setSessionClosed(boolean sessionClosed) { isSessionClosed = sessionClosed; }
 }

@@ -2,6 +2,7 @@ package com.foodrec.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * User Entity (Optional - for authentication)
@@ -146,6 +147,19 @@ public class UserEntity {
     
     public void setLastLogin(LocalDateTime lastLogin) {
         this.lastLogin = lastLogin;
+    }
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private java.util.List<RecommendationEntity> recommendations;
+
+    // Getter & Setter untuk List ini
+    public java.util.List<RecommendationEntity> getRecommendations() {
+        return recommendations;
+    }
+
+    public void setRecommendations(java.util.List<RecommendationEntity> recommendations) {
+        this.recommendations = recommendations;
     }
     
     @Override
