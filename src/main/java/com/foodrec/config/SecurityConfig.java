@@ -1,6 +1,6 @@
 package com.foodrec.config;
 
-import com.foodrec.service.MyUserDetailsService; // Import ini
+import com.foodrec.service.MyUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,42 +17,49 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     @Autowired
-    private MyUserDetailsService userDetailsService; // Inject service kita
+    private MyUserDetailsService userDetailsService;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    // --- TAMBAHKAN BEAN INI AGAR SPRING TAHU CARA CEK PASSWORD ---
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService); // Pakai service kita
-        provider.setPasswordEncoder(passwordEncoder()); // Pakai encoder BCrypt
+        provider.setUserDetailsService(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }
-    // -------------------------------------------------------------
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // ... (Kode SecurityFilterChain kamu yang lama biarkan saja) ...
         http
-            .csrf(csrf -> csrf.disable())
+            .csrf(csrf -> csrf.disable()) // Matikan CSRF sementara biar aman buat dev
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/style.css", "/script.js", "/images/**", "/register", "/login").permitAll()
+                // 1. DAFTAR HALAMAN PUBLIK (Boleh diakses tanpa login)
+                .requestMatchers(
+                    "/login",           // Halaman Login
+                    "/register",        // Halaman Register
+                    "/style.css",       // CSS
+                    "/script.js",       // JS
+                    "/images/**",       // Gambar
+                    "/api/health"       // Cek status server
+                ).permitAll()
+                
+                // 2. SELAIN DI ATAS, WAJIB LOGIN (Termasuk "/" Dashboard, "/journal", "/profile")
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
-                .loginPage("/login")
-                .defaultSuccessUrl("/", true)
+                .loginPage("/login")          // Jika belum login, lempar ke sini
+                .defaultSuccessUrl("/", true) // Jika sukses login, masuk ke Dashboard
                 .permitAll()
             )
             .logout(logout -> logout
                 .logoutUrl("/logout")
-                .logoutSuccessUrl("/login?logout")
-                .invalidateHttpSession(true)
-                .deleteCookies("JSESSIONID")
+                .logoutSuccessUrl("/login?logout") // Setelah logout, balik ke login
+                .invalidateHttpSession(true)       // Hapus sesi
+                .deleteCookies("JSESSIONID")       // Hapus cookie
                 .permitAll()
             );
 

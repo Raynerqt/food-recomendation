@@ -9,6 +9,15 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ResponseBody;
+import java.io.IOException;
+import com.foodrec.repository.DoctorRepository; // Tambah ini
+import com.foodrec.entity.DoctorEntity; // Tambah ini
+import java.util.List;
+import java.util.Map;
 
 import java.security.Principal;
 
@@ -20,6 +29,9 @@ public class WebController {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired 
+    private DoctorRepository doctorRepository; 
 
     @GetMapping("/login")
     public String login() {
@@ -34,23 +46,22 @@ public class WebController {
     // --- INI METHOD HOME YANG BENAR (Hanya Boleh Satu) ---
     @GetMapping("/")
     public String home(Model model, Principal principal) {
-        if (principal != null) {
-            String username = principal.getName();
-            UserEntity user = userRepository.findByUsername(username).orElse(null);
-            
-            if (user != null) {
-                // LOGIKA: Jika umur masih kosong, WAJIB isi profil dulu
-                if (user.getAge() == null) {
-                    return "redirect:/profile";
-                }
-                model.addAttribute("username", user.getUsername()); // Pakai nama asli/username
+        // Kita tidak perlu lagi cek 'if (principal != null)' untuk redirect login
+        // karena SecurityConfig sudah menahannya di depan pintu.
+        
+        String username = principal.getName();
+        UserEntity user = userRepository.findByUsername(username).orElse(null);
+        
+        if (user != null) {
+            // Cek apakah user baru (belum isi umur)? Lempar ke Profile
+            if (user.getAge() == null) {
+                return "redirect:/profile";
             }
-        } else {
-            return "redirect:/login";
+            model.addAttribute("username", user.getUsername());
         }
-        return "index";
+        
+        return "index"; // Buka Dashboard
     }
-
     @GetMapping("/profile")
     public String showProfile(Model model, Principal principal) {
         if (principal == null) return "redirect:/login";
@@ -60,6 +71,19 @@ public class WebController {
         
         model.addAttribute("user", user); // Kirim data user ke HTML
         return "profile";
+    }
+
+    @GetMapping("/journal")
+    public String showJournal(Model model, Principal principal) {
+        if (principal != null) {
+            String username = principal.getName();
+            UserEntity user = userRepository.findByUsername(username).orElse(null);
+            model.addAttribute("user", user);
+            // Nanti di sini kita load data history follow-up dari database temanmu
+        } else {
+            return "redirect:/login";
+        }
+        return "history"; // Mengarah ke templates/history.html
     }
     // -----------------------------------------------------
 
@@ -110,4 +134,50 @@ public class WebController {
 
         return "redirect:/login";
     }
+    // 1. ENDPOINT UPLOAD FOTO
+    @PostMapping("/profile/upload")
+    @ResponseBody // Penting agar return text/json, bukan redirect halaman
+    public ResponseEntity<?> uploadProfilePhoto(@RequestParam("photo") MultipartFile file, Principal principal) {
+        if (principal != null && !file.isEmpty()) {
+            try {
+                String username = principal.getName();
+                UserEntity user = userRepository.findByUsername(username).orElseThrow();
+                
+                user.setProfileImage(file.getBytes());
+                userRepository.save(user);
+                
+                return ResponseEntity.ok(Map.of("status", "success", "message", "Photo updated!"));
+            } catch (IOException e) {
+                return ResponseEntity.status(500).body(Map.of("status", "error", "message", e.getMessage()));
+            }
+        }
+        return ResponseEntity.badRequest().body(Map.of("status", "error", "message", "File empty or user not found"));
+    }
+
+    // --- ENDPOINT DATA DOKTER (Baru) ---
+    @GetMapping("/api/doctors")
+    @ResponseBody
+    public List<DoctorEntity> getDoctors(@RequestParam(required = false) String type) {
+        if (type != null && !type.isEmpty() && !type.equals("All")) {
+            return doctorRepository.findBySpecialization(type);
+        }
+        return doctorRepository.findAll();
+    }
+
+    // 2. ENDPOINT MENAMPILKAN FOTO (Agar bisa dilihat di <img>)
+    @GetMapping("/profile/image")
+    @ResponseBody
+    public ResponseEntity<byte[]> getProfileImage(Principal principal) {
+        if (principal != null) {
+            UserEntity user = userRepository.findByUsername(principal.getName()).orElse(null);
+            if (user != null && user.getProfileImage() != null) {
+                return ResponseEntity.ok()
+                        .contentType(MediaType.IMAGE_JPEG) // Atau PNG, browser biasanya pintar deteksi
+                        .body(user.getProfileImage());
+            }
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    
 }

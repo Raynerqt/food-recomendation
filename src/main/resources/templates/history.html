@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Health Journal</title>
+    <link rel="stylesheet" href="/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Dancing+Script:wght@600&family=Patrick+Hand&display=swap" rel="stylesheet">
+    <style>
+        /* --- GLOBAL STYLE --- */
+        body { 
+            overflow-y: auto; overflow-x: hidden; margin: 0;
+            background: url('https://images.unsplash.com/photo-1490818387583-1baba5e638af?q=80&w=1932&auto=format&fit=crop') no-repeat center center/cover;
+            background-attachment: fixed;
+        }
+        body::before { 
+            content: ''; position: fixed; top:0; left:0; width:100%; height:100%; 
+            background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(4px); z-index: -1; 
+        }
+
+        /* --- BOOK SCENE --- */
+        .book-scene {
+            width: 100%; min-height: 100vh;
+            display: flex; flex-direction: column;
+            justify-content: flex-start; align-items: center;
+            perspective: 2000px; padding-top: 80px; padding-bottom: 100px;
+        }
+        .book {
+            position: relative; width: 460px; height: 640px;
+            transform-style: preserve-3d; transition: transform 0.8s;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+        }
+        .book.open { transform: translateX(230px); }
+
+        /* --- LEAVES --- */
+        .leaf {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            transform-origin: left center;
+            transition: transform 1s cubic-bezier(0.645, 0.045, 0.355, 1);
+            transform-style: preserve-3d;
+        }
+        .front, .back {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            backface-visibility: hidden; border-radius: 5px 15px 15px 5px;
+        }
+        .front { z-index: 2; }
+        .back { z-index: 1; transform: rotateY(180deg); border-radius: 15px 5px 5px 15px; }
+
+        /* Z-Index Tumpukan (4 Halaman) */
+        #leaf1 { z-index: 5; } #leaf2 { z-index: 4; } #leaf3 { z-index: 3; } #leaf4 { z-index: 2; }
+
+        /* --- COVER STYLES --- */
+        .cover-front {
+            background: #5D4037;
+            background-image: url("https://www.transparenttextures.com/patterns/leather.png");
+            border: 3px solid #3E2723;
+            display: flex; flex-direction: column; justify-content: flex-start;
+            align-items: center; text-align: center; padding-top: 60px; color: #FFD700;
+        }
+        .user-photo-frame {
+            width: 140px; height: 140px; background: #EFEBE9; 
+            border: 5px solid #FFD700; border-radius: 50%;
+            margin-bottom: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.5); 
+            position: relative; overflow: hidden; cursor: pointer; transition: transform 0.3s;
+        }
+        .user-photo-frame:hover { transform: scale(1.05); }
+        .user-photo-img {
+            width: 100%; height: 100%; background-size: cover; background-position: center;
+            display: flex; justify-content: center; align-items: center; background-color: #EFEBE9; 
+        }
+        /* Cache Buster: Kita akan handle background image via JS atau inline style Thymeleaf */
+        
+        /* --- PAPER STYLES --- */
+        .paper {
+            background: #FFFDE7; background-image: url("https://www.transparenttextures.com/patterns/cream-paper.png");
+            padding: 40px; box-shadow: inset 10px 0 20px rgba(0,0,0,0.1); border-left: 10px solid #d7ccc8;
+        }
+        .paper-left {
+            border-left: none; border-right: 10px solid #d7ccc8;
+            box-shadow: inset -10px 0 20px rgba(0,0,0,0.1);
+        }
+        h3.handwriting { font-family: 'Dancing Script', cursive; font-size: 2.2rem; color: #5D4037; border-bottom: 2px dashed #bbb; margin-bottom: 20px; }
+        
+        /* DOCTOR LIST */
+        .doctor-card {
+            display: flex; align-items: center; gap: 15px;
+            background: rgba(255,255,255,0.5); padding: 10px;
+            border-radius: 10px; margin-bottom: 10px; border: 1px solid rgba(0,0,0,0.05);
+            transition: 0.2s;
+        }
+        .doctor-card:hover { transform: translateX(5px); background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .doc-img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid #ddd; }
+        .doc-info h5 { margin: 0; font-size: 1rem; color: #333; }
+        .doc-info p { margin: 0; font-size: 0.8rem; color: #666; }
+        .btn-contact {
+            margin-left: auto; text-decoration: none; font-size: 1.2rem;
+            background: #25D366; color: white; width: 35px; height: 35px;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        }
+
+        /* TABS */
+        .bookmarks { position: absolute; right: -50px; top: 40px; display: flex; flex-direction: column; gap: 8px; z-index: 0; }
+        .tab {
+            width: 60px; height: 45px; background: #E65100; color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; border-radius: 0 10px 10px 0; cursor: pointer;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3); transition: 0.3s;
+        }
+        .tab:hover { margin-left: 5px; }
+        .tab-1 { background: #8E24AA; } .tab-2 { background: #E65100; } .tab-3 { background: #1976D2; } .tab-4 { background: #2E7D32; }
+
+        /* CONTROLS */
+        .controls { margin-top: 30px; display: flex; gap: 20px; z-index: 100; }
+        .arrow-btn {
+            width: 50px; height: 50px; border-radius: 50%; border: none; background: #fff;
+            font-size: 1.5rem; cursor: pointer; color: #5D4037; box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: 0.3s;
+        }
+        .arrow-btn:hover { transform: scale(1.1); background: #FFD700; }
+        .flipped { transform: rotateY(-180deg); }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar" style="background: transparent; box-shadow: none; position: absolute; top:0; width:100%; z-index:100;">
+        <h1 style="color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">📜 My Health Journal</h1>
+        <a href="/" style="background: rgba(255,255,255,0.2); color: white; padding: 8px 15px; border-radius: 20px; text-decoration: none; backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.3);">← Back to Dashboard</a>
+    </nav>
+
+    <div class="book-scene">
+        <div class="book" id="book">
+            
+            <div class="leaf" id="leaf1" style="z-index: 5;">
+                <div class="front cover-front">
+                    <input type="file" id="photoInput" accept="image/*" style="display: none;">
+                    
+                    <div class="user-photo-frame" onclick="document.getElementById('photoInput').click()" title="Change Photo">
+                         <div class="user-photo-img" id="profileImageDiv"
+                              th:style="${user.profileImage != null} ? 'background-image: url(/profile/image?t=' + ${#dates.createNow().getTime()} + ');' : ''">
+                            <span class="initial-text" id="initialText" 
+                                  th:if="${user.profileImage == null}"
+                                  th:text="${#strings.substring(user.username,0,1).toUpperCase()}"
+                                  style="font-size: 3.5rem; color: #5D4037; font-weight: bold;">U</span>
+                        </div>
+                        <div style="position: absolute; bottom: 10px; right: 10px; background: #FFD700; border-radius: 50%; padding: 5px; border: 2px solid white;">📷</div>
+                    </div>
+
+                    <h1 class="title-gold" style="font-size: 2.8rem; margin: 10px 0;">Health Diary</h1>
+                    <p style="color: #D7CCC8; letter-spacing: 3px;">PERSONAL RECORD</p>
+                    <div style="margin-top: 30px; border-top: 1px solid rgba(255,215,0,0.3); padding-top: 10px; width: 70%;">
+                        <p style="color: #fff;">Owner:</p>
+                        <h2 class="title-gold" style="text-decoration: underline;" th:text="${user.username}">User</h2>
+                    </div>
+                    <div style="position: absolute; bottom: 40px; width: 80%; font-family: 'Patrick Hand'; color: rgba(255,215,0,0.8); border-top: 1px dashed rgba(255,215,0,0.3); border-bottom: 1px dashed rgba(255,215,0,0.3); padding: 10px 0;" contenteditable="true">
+                        "Your health is an investment, not an expense."
+                    </div>
+                </div>
+                <div class="back paper paper-left">
+                    <h3 class="handwriting" style="text-align: center;">Biodata</h3>
+                    <div class="data-row"><span>Name:</span> <strong th:text="${user.username}">-</strong></div>
+                    <div class="data-row"><span>Age:</span> <strong th:text="${user.age} + ' y.o'">-</strong></div>
+                    <div class="data-row"><span>Gender:</span> <strong th:text="${user.gender}">-</strong></div>
+                    <div style="margin-top: 30px; text-align:center; opacity:0.7;">
+                        "Keep going, you are doing great!"
+                    </div>
+                </div>
+            </div>
+
+            <div class="leaf" id="leaf2" style="z-index: 4;">
+                <div class="front paper">
+                    <h3 class="handwriting" style="color: #5D4037;">Case Directory</h3>
+                    <div id="caseListContainer" style="height: 400px; overflow-y: auto; margin-top: 15px;">
+                        <p style="text-align:center;">Loading cases...</p>
+                    </div>
+                    <div style="position: absolute; bottom: 20px; right: 20px; color: #aaa;">1</div>
+                </div>
+                <div class="back paper paper-left">
+                    <h3 class="handwriting" id="detailTitle" style="color: #E65100;">...</h3>
+                    <div style="background: rgba(230, 81, 0, 0.1); padding: 15px; border-radius: 10px;">
+                        <strong>Initial Advice:</strong>
+                        <p id="detailNotes" style="font-family: 'Patrick Hand'; font-size: 1rem;">...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="leaf" id="leaf3" style="z-index: 3;">
+                <div class="front paper">
+                    <div style="height: 250px; overflow-y: auto; border-bottom: 2px dashed #ccc; margin-bottom: 15px; padding-right: 5px;" id="timelineContainer">
+                        <p style="text-align: center; margin-top: 50px; color: #999;">Select a case.</p>
+                    </div>
+                    <h4 style="font-family: 'Dancing Script'; margin: 0; color: #1976D2;">Add Update</h4>
+                    <form onsubmit="event.preventDefault(); submitFollowUp();">
+                        <input type="hidden" id="selectedCaseId">
+                        <select id="conditionInput" class="glass-input" style="padding: 5px; margin-bottom: 5px; width: 100%;">
+                            <option value="Better">😊 Feeling Better</option>
+                            <option value="Same">😐 No Change</option>
+                            <option value="Worse">🤒 Getting Worse</option>
+                        </select>
+                        <textarea id="notesInput" rows="2" class="glass-input" placeholder="Today's notes..." style="width: 100%; font-family: 'Patrick Hand';"></textarea>
+                        <button id="btnSave" type="submit" class="btn-glow" style="width: 100%; margin-top: 5px; padding: 8px;">Save Entry 💾</button>
+                    </form>
+                    <div style="position: absolute; bottom: 20px; right: 20px; color: #aaa;">2</div>
+                </div>
+                <div class="back paper paper-left">
+                    <div style="display: flex; justify-content: center; align-items: center; height: 100%; flex-direction: column; opacity: 0.6;">
+                        <img src="https://cdn-icons-png.flaticon.com/512/3063/3063823.png" width="100">
+                        <p style="font-family: 'Patrick Hand'; font-size: 1.2rem; margin-top: 10px;">Doctor's Directory</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="leaf" id="leaf4" style="z-index: 2;">
+                <div class="front paper">
+                    <h3 class="handwriting" style="color: #2E7D32;">Find a Doctor</h3>
+                    
+                    <select id="docFilter" class="glass-input" style="width: 100%; padding: 8px; margin-bottom: 15px;" onchange="loadDoctors(this.value)">
+                        <option value="All">All Specialists</option>
+                        <option value="Nutritionist">Nutritionist</option>
+                        <option value="Gastroenterologist">Gastroenterologist</option>
+                        <option value="General Practitioner">General Practitioner</option>
+                    </select>
+
+                    <div id="doctorList" style="height: 380px; overflow-y: auto;">
+                        <p style="text-align: center;">Loading doctors...</p>
+                    </div>
+                    
+                    <div style="position: absolute; bottom: 20px; right: 20px; color: #aaa;">3</div>
+                </div>
+                <div class="back" style="background: #3E2723; border: 3px solid #281815;"></div>
+            </div>
+
+            <div class="bookmarks">
+                <div class="tab tab-1" onclick="gotoPage(0)" title="Cover">🏠</div>
+                <div class="tab tab-2" onclick="gotoPage(1)" title="Directory">📂</div>
+                <div class="tab tab-3" onclick="gotoPage(2)" title="Timeline">📝</div>
+                <div class="tab tab-4" onclick="gotoPage(3)" title="Doctors">👨‍⚕️</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="arrow-btn" id="prevBtn" onclick="flip(-1)">❮</button>
+            <button class="arrow-btn" id="nextBtn" onclick="flip(1)">❯</button>
+        </div>
+    </div>
+
+    <script>
+        // --- BOOK LOGIC ---
+        let currentState = 0; const maxState = 3; // Sekarang ada 4 halaman (0-3)
+        const book = document.getElementById('book');
+        const leaves = [document.getElementById('leaf1'), document.getElementById('leaf2'), document.getElementById('leaf3'), document.getElementById('leaf4')];
+
+        function updateBook() {
+            if (currentState > 0) book.classList.add('open'); else book.classList.remove('open');
+            leaves.forEach((leaf, index) => {
+                if (currentState > index) { leaf.classList.add('flipped'); leaf.style.zIndex = index; }
+                else { leaf.classList.remove('flipped'); leaf.style.zIndex = 5 - index; }
+            });
+        }
+        function flip(dir) {
+            currentState += dir;
+            if (currentState < 0) currentState = 0;
+            if (currentState > maxState) currentState = maxState;
+            updateBook();
+        }
+        function gotoPage(num) { currentState = num; updateBook(); }
+        updateBook();
+
+        // --- UPLOAD FOTO (FIXED: RETURN JSON) ---
+        const photoInput = document.getElementById('photoInput');
+        const profileImageDiv = document.getElementById('profileImageDiv');
+        const initialText = document.getElementById('initialText');
+
+        photoInput.addEventListener('change', async function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Preview Langsung
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                profileImageDiv.style.backgroundImage = `url(${e.target.result})`;
+                if(initialText) initialText.style.display = 'none';
+            }
+            reader.readAsDataURL(file);
+
+            // Upload ke Server
+            const formData = new FormData();
+            formData.append("photo", file);
+            try {
+                const res = await fetch('/profile/upload', { method: 'POST', body: formData });
+                const result = await res.json();
+                if(result.status === 'success') {
+                    console.log("Photo Saved!"); 
+                } else {
+                    alert("Gagal simpan foto: " + result.message);
+                }
+            } catch (error) { console.error("Upload error", error); }
+        });
+
+        // --- LOAD DATA (Cases & Doctors) ---
+        window.addEventListener('DOMContentLoaded', () => {
+            loadCases();
+            loadDoctors('All');
+        });
+
+        async function loadCases() {
+            try {
+                const res = await fetch('/api/cases');
+                const data = await res.json();
+                const container = document.getElementById('caseListContainer');
+                if(data.length===0) { container.innerHTML = "<p style='text-align:center'>No records.</p>"; return; }
+                let html = "";
+                data.forEach(item => {
+                    html += `<div onclick="selectCase(${item.id}, '${item.diseaseName}', '${escapeHtml(item.additionalNotes)}')" 
+                             style="padding: 10px; border-bottom: 1px solid #ddd; cursor: pointer;"
+                             onmouseover="this.style.background='rgba(0,0,0,0.05)'" onmouseout="this.style.background='transparent'">
+                            <strong style="color: #5D4037;">${item.diseaseName}</strong> <br>
+                            <small style="color: #888;">${new Date(item.createdAt).toLocaleDateString()}</small>
+                            <span style="float: right;">➔</span>
+                        </div>`;
+                });
+                container.innerHTML = html;
+            } catch(e) {}
+        }
+
+        async function selectCase(id, name, notes) {
+            document.getElementById('selectedCaseId').value = id;
+            document.getElementById('detailTitle').innerText = name;
+            document.getElementById('detailNotes').innerText = notes.substring(0, 100) + "...";
+            await loadTimeline(id);
+            gotoPage(2);
+        }
+
+        async function loadTimeline(id) {
+            const container = document.getElementById('timelineContainer');
+            try {
+                const res = await fetch(`/api/cases/${id}/timeline`);
+                const data = await res.json();
+                if(data.length===0) { container.innerHTML = "<p style='text-align:center; margin-top:20px'>No history.</p>"; return; }
+                let html = "";
+                data.forEach(item => {
+                    html += `<div style="margin-bottom: 10px; border-left: 3px solid #E65100; padding-left: 10px;">
+                        <small style="color:#888;">${new Date(item.date).toLocaleDateString()}</small><br>
+                        <span style="background:#FFF3E0; padding:2px 6px; border-radius:4px; font-size:0.8rem">${item.userCondition}</span>
+                        <p style="margin:5px 0; font-family:'Patrick Hand'">"${item.userNotes}"</p>
+                        <div style="background:rgba(76,175,80,0.1); padding:5px; border-radius:5px; font-size:0.8rem; color:#2E7D32;">🤖 ${item.aiAdvice}</div>
+                    </div>`;
+                });
+                container.innerHTML = html;
+            } catch(e) {}
+        }
+
+        async function submitFollowUp() {
+            const id = document.getElementById('selectedCaseId').value;
+            const notes = document.getElementById('notesInput').value;
+            const condition = document.getElementById('conditionInput').value;
+            const btn = document.getElementById('btnSave');
+
+            if(!id) { alert("Select case first!"); gotoPage(1); return; }
+            if(!notes) { alert("Write notes!"); return; }
+
+            btn.innerHTML = "Analysing... 🧠"; btn.disabled = true;
+            try {
+                const res = await fetch(`/api/recommend/feedback/${id}`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ condition, notes })
+                });
+                if(res.ok) {
+                    alert("Saved!");
+                    document.getElementById('notesInput').value = "";
+                    loadTimeline(id);
+                }
+            } catch(e) { alert("Error"); }
+            finally { btn.innerHTML = "Save Entry 💾"; btn.disabled = false; }
+        }
+
+        // --- DOCTOR LOGIC (BARU) ---
+        async function loadDoctors(type) {
+            const container = document.getElementById('doctorList');
+            container.innerHTML = "<p style='text-align:center'>Finding doctors...</p>";
+            try {
+                const res = await fetch(`/api/doctors?type=${type}`);
+                const data = await res.json();
+                
+                if(data.length === 0) { container.innerHTML = "<p style='text-align:center'>No doctors found.</p>"; return; }
+                
+                let html = "";
+                data.forEach(doc => {
+                    html += `
+                    <div class="doctor-card">
+                        <img src="${doc.imageUrl}" class="doc-img" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3774/3774299.png'">
+                        <div class="doc-info">
+                            <h5>${doc.name}</h5>
+                            <p style="color: #E65100; font-weight:bold;">${doc.specialization}</p>
+                            <p>${doc.hospital} - ${doc.location}</p>
+                        </div>
+                        <a href="https://wa.me/${doc.phoneNumber.replace('+','')}" target="_blank" class="btn-contact" title="Chat on WA">💬</a>
+                    </div>`;
+                });
+                container.innerHTML = html;
+            } catch (e) { container.innerHTML = "<p>Error loading doctors.</p>"; }
+        }
+
+        function escapeHtml(text) { return text ? text.replace(/['"]/g, "") : ""; }
+    </script>
+</body>
+</html>

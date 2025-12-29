@@ -20,14 +20,42 @@ public class GeminiAIService extends AIService {
 
     public GeminiAIService(APIClient apiClient) {
         super(apiClient);
-        // PERUBAHAN PENTING: Kita pakai 'gemini-pro' (1.0) yang paling stabil.
-        // 'gemini-1.5-flash' sering error 404 jika akun belum disetting billing/region.
-        this.model = "gemini-2.5-flash";
+        this.model = "gemini-2.5-flash"; // Pastikan model ini aktif/valid
     }
 
+    // === FITUR 1: ANALISA FOLLOW UP (Untuk Jurnal) ===
+    @Override 
+    public Map<String, String> analyzeCondition(String diseaseName, String userFeedback) {
+        String prompt = "You are a medical assistant. A patient diagnosed with '" + diseaseName + "' " +
+                "reported this follow-up condition: '" + userFeedback + "'.\n\n" +
+                "Analyze if they need a doctor immediately or if they are recovering.\n" +
+                "Return STRICT JSON ONLY (No Markdown):\n" +
+                "{\n" +
+                "  \"status\": \"RECOVERED\" (if getting better) OR \"DOCTOR_REQUIRED\" (if worse/critical) OR \"MONITORING\" (if neutral),\n" +
+                "  \"message\": \"Your short advice (max 2 sentences)\"\n" +
+                "}";
+
+        try {
+            String rawResponse = callAI(prompt);
+            String cleanJson = cleanMarkdown(rawResponse);
+            JsonObject json = JsonParser.parseString(cleanJson).getAsJsonObject();
+            
+            Map<String, String> result = new HashMap<>();
+            // Ambil value dengan aman
+            result.put("status", json.has("status") ? json.get("status").getAsString().toUpperCase() : "MONITORING");
+            result.put("message", json.has("message") ? json.get("message").getAsString() : "Please consult a doctor.");
+            return result;
+        } catch (Exception e) {
+            Map<String, String> errorResult = new HashMap<>();
+            errorResult.put("status", "DOCTOR_REQUIRED");
+            errorResult.put("message", "System cannot analyze. Consult a doctor.");
+            return errorResult;
+        }
+    }
+
+    // === FITUR 2: REKOMENDASI MAKANAN (Dashboard) ===
     @Override
     protected String buildPrompt(Disease disease) {
-        // Gabungkan string dengan (+) biasa agar aman dari error format %s
         String diseaseName = (disease.getName() != null) ? disease.getName() : "Unknown";
         
         return "You are a nutritionist AI. Patient diagnosis: " + diseaseName + ". " +
@@ -41,11 +69,9 @@ public class GeminiAIService extends AIService {
 
     @Override
     protected String callAI(String prompt) throws Exception {
-        // URL Bersih tanpa karakter aneh
-        // Format URL untuk Gemini Pro di API v1beta
+        // [FIX] URL ini sekarang bersih dari karakter markdown '[' atau ']'
         this.apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + geminiApiKey;
-
-        // Build Request Body
+        
         JsonObject requestBody = new JsonObject();
         JsonArray contents = new JsonArray();
         JsonObject content = new JsonObject();
@@ -61,44 +87,26 @@ public class GeminiAIService extends AIService {
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/json");
 
-        // Call API
-        String response = apiClient.sendPostRequest(
-            this.apiUrl,
-            requestBody.toString(),
-            headers
-        );
-
-        // Parsing Response
-        try {
-            JsonObject responseJson = JsonParser.parseString(response).getAsJsonObject();
-            
-            // Cek Error
-            if (responseJson.has("error")) {
-                throw new Exception("Google AI Error: " + responseJson.get("error").toString());
-            }
-
-            JsonArray candidates = responseJson.getAsJsonArray("candidates");
-            if (candidates != null && candidates.size() > 0) {
-                // Struktur JSON Gemini Pro sedikit berbeda kadang-kadang, kita ambil text-nya
-                return candidates.get(0).getAsJsonObject()
-                        .getAsJsonObject("content")
-                        .getAsJsonArray("parts")
-                        .get(0).getAsJsonObject()
-                        .get("text").getAsString();
-            }
-        } catch (Exception e) {
-            // Debugging: Jika error, print respon aslinya ke console server
-            System.out.println("DEBUG RESPONSE: " + response);
-            throw new Exception("Gagal baca respon AI: " + e.getMessage());
+        String response = apiClient.sendPostRequest(this.apiUrl, requestBody.toString(), headers);
+        
+        // Error Handling API Google
+        JsonObject responseJson = JsonParser.parseString(response).getAsJsonObject();
+        if (responseJson.has("error")) {
+            throw new Exception("Google AI Error: " + responseJson.get("error").toString());
         }
-
-        throw new Exception("No content in Gemini response");
+        
+        try {
+            return responseJson.getAsJsonArray("candidates").get(0).getAsJsonObject()
+                    .getAsJsonObject("content").getAsJsonArray("parts").get(0).getAsJsonObject()
+                    .get("text").getAsString();
+        } catch (Exception e) {
+            throw new Exception("Empty response from AI");
+        }
     }
 
     @Override
     protected FoodRecommendation parseResponse(String response, Disease disease) {
         FoodRecommendation recommendation = new FoodRecommendation(disease, getProviderName());
-
         try {
             String cleanJson = cleanMarkdown(response);
             JsonObject jsonResponse = JsonParser.parseString(cleanJson).getAsJsonObject();
@@ -117,19 +125,14 @@ public class GeminiAIService extends AIService {
                 recommendation.setAdditionalNotes(jsonResponse.get("additionalNotes").getAsString());
             }
             
-            recommendation.setReason("Generated by " + this.model);
-
         } catch (Exception e) {
-            recommendation.setAdditionalNotes(response);
+            recommendation.setAdditionalNotes("Raw AI Response (Format Error): " + response);
         }
-
         return recommendation;
     }
 
     @Override
-    protected String getProviderName() {
-        return "Google Gemini (" + this.model + ")";
-    }
+    protected String getProviderName() { return "Google Gemini (" + this.model + ")"; }
 
     private String cleanMarkdown(String text) {
         if (text == null) return "";

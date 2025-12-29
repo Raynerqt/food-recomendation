@@ -201,7 +201,116 @@ body {
 .note-content strong { color: #D84315; }
 
 /* Responsive HP */
-@media (max-width: 768px) {
-    .result-grid { grid-template-columns: 1fr; } /* Jadi 1 kolom */
-    .info-box { margin-bottom: 15px; }
+@media (max-width: 1300px) {
+    .main-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        max-width: 900px;
+    }
+    
+    .floating-journal {
+        position: static; /* Matikan absolute */
+        margin-top: 40px;
+        flex-direction: row; /* Buku jadi di samping teks label */
+        right: auto;
+    }
 }
+
+/* Memaksa container slider mengambil baris baru penuh */
+.full-width-col {
+    grid-column: 1 / -1 !important;
+    width: 100%;
+}
+
+/* --- MINI 3D BOOK (Untuk Dashboard) --- */
+.mini-book-container {
+    perspective: 600px;
+    width: 100px;
+    height: 140px;
+    cursor: pointer;
+    transition: transform 0.3s;
+}
+.mini-book-container:hover { transform: translateY(-10px) scale(1.05); }
+
+.mini-book {
+    width: 100%; height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transform: rotateY(-30deg) rotateX(10deg);
+    transition: transform 0.5s;
+}
+.mini-book:hover { transform: rotateY(0deg) rotateX(0deg); }
+
+.mini-cover {
+    position: absolute; width: 100%; height: 100%;
+    background: #5D4037; border-radius: 2px 5px 5px 2px;
+    border: 1px solid #4E342E;
+    display: flex; align-items: center; justify-content: center;
+    color: #FFD700; font-size: 2rem;
+    box-shadow: 5px 5px 10px rgba(0,0,0,0.3);
+    z-index: 2;
+}
+.mini-pages {
+    position: absolute; right: 2px; top: 2px;
+    width: 90%; height: 96%;
+    background: #fff; border-radius: 0 4px 4px 0;
+    z-index: 1;
+    background: linear-gradient(to right, #ccc 1px, transparent 1px);
+    background-size: 2px 100%;
+}
+.mini-label {
+    position: absolute; bottom: -30px; width: 100%; text-align: center;
+    font-size: 0.8rem; font-weight: bold; color: var(--primary);
+    background: rgba(255,255,255,0.8); padding: 2px 5px; border-radius: 10px;
+}
+
+/* --- LAYOUT UTAMA DASHBOARD (BARU) --- */
+.main-wrapper {
+    position: relative; /* Menjadi patokan koordinat */
+    max-width: 850px;   /* Lebar khusus Form saja */
+    margin: 40px auto;  /* Form otomatis di tengah layar */
+    padding: 0 20px;
+    z-index: 2;
+}
+
+/* Panel Kaca Form */
+.glass-dashboard {
+    width:100%;
+    flex: 1; /* Ambil sisa ruang */
+    min-width: 350px; /* Jangan terlalu gepeng */
+    /* ... (style lama tetap ada) ... */
+}
+
+/* Container Buku di Dashboard (Di Luar Panel) */
+.floating-journal {
+    position: absolute;
+    right: -200px; /* Geser ke kanan luar wrapper */
+    top: 50px;     /* Posisi vertikal */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    z-index: 10;
+}
+
+/* Teks ajakan di bawah buku */
+.journal-label {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 8px 15px;
+    border-radius: 20px;
+    color: #5D4037;
+    font-weight: bold;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    font-size: 0.9rem;
+    animation: floatLabel 3s infinite ease-in-out;
+    white-space: nowrap; /* Biar teks gak turun baris */
+}
+@keyframes floatLabel {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+/* --- FIX HISTORY PAGE SCROLL --- */
+/* Tambahkan class ini khusus untuk body di halaman history jika perlu, 
+   atau kita atur di style tag HTML-nya langsung (lihat langkah 3) */

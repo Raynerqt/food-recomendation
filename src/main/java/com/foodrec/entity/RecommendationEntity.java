@@ -2,7 +2,8 @@ package com.foodrec.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-
+import java.util.List;
+import java.util.ArrayList;
 /**
  * Recommendation History Entity
  * Demonstrates: JPA Entity, One-to-Many relationship
@@ -52,6 +53,31 @@ public class RecommendationEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id") // Ini akan membuat kolom 'user_id' di tabel recommendations
     private UserEntity user;
+    
+    @Column(name = "user_feedback", columnDefinition = "TEXT")
+    private String userFeedback; // Curhatan user: "Perut masih sakit..."
+
+    @Column(name = "follow_up_status")
+    private String followUpStatus; // MONITORING, RECOVERED, atau DOCTOR_REQUIRED
+
+    @Column(name = "ai_final_advice", columnDefinition = "TEXT")
+    private String aiFinalAdvice; // Saran baru dari AI setelah user lapor
+
+    @Column(name = "is_session_closed")
+    private boolean isSessionClosed = false; // Kalau sudah sembuh/parah, sesi ditutup
+
+    // === GETTER & SETTER BARU (WAJIB ADA) ===
+    public String getUserFeedback() { return userFeedback; }
+    public void setUserFeedback(String userFeedback) { this.userFeedback = userFeedback; }
+
+    public String getFollowUpStatus() { return followUpStatus; }
+    public void setFollowUpStatus(String followUpStatus) { this.followUpStatus = followUpStatus; }
+
+    public String getAiFinalAdvice() { return aiFinalAdvice; }
+    public void setAiFinalAdvice(String aiFinalAdvice) { this.aiFinalAdvice = aiFinalAdvice; }
+
+    public boolean isSessionClosed() { return isSessionClosed; }
+    public void setSessionClosed(boolean sessionClosed) { isSessionClosed = sessionClosed; }
 
     // Jangan lupa Getter & Setter-nya
     public UserEntity getUser() {
@@ -73,6 +99,7 @@ public class RecommendationEntity {
         this.diseaseType = diseaseType;
         this.aiProvider = aiProvider;
     }
+    
     
     // JPA Callbacks
     @PrePersist
@@ -186,5 +213,18 @@ public class RecommendationEntity {
                 ", aiProvider='" + aiProvider + '\'' +
                 ", createdAt=" + createdAt +
                 '}';
+    }
+
+    @OneToMany(mappedBy = "recommendation", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<FollowUpEntity> followUps = new ArrayList<>();
+
+    // Getter Setter
+    public List<FollowUpEntity> getFollowUps() { return followUps; }
+    public void setFollowUps(List<FollowUpEntity> followUps) { this.followUps = followUps; }
+    
+    // Helper method untuk nambah data biar gampang
+    public void addFollowUp(FollowUpEntity followUp) {
+        followUps.add(followUp);
+        followUp.setRecommendation(this);
     }
 }
