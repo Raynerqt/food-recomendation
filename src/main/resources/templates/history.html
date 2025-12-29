@@ -94,12 +94,17 @@
             cursor: pointer;
         }
 
-        /* 2. Wadah Dalam: Memegang Gambar */
         .user-photo-img {
             width: 100%; height: 100%;
             background-size: cover;
             background-position: center;
             display: flex; justify-content: center; align-items: center;
+            /* Default background (placeholder) jika tidak ada foto */
+            background-color: #EFEBE9; 
+        }
+        /* Class tambahan jika foto ada (diambil dari endpoint) */
+        .has-photo {
+            background-image: url('/profile/image'); /* Panggil endpoint Controller tadi */
         }
         
         .initial-text {
@@ -165,7 +170,7 @@
 
     <nav class="navbar" style="background: transparent; box-shadow: none; position: absolute; top:0; width:100%; z-index:100;">
         <h1 style="color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">📜 My Health Journal</h1>
-        <a href="/" style="background: rgba(255,255,255,0.2); color: white; padding: 8px 15px; border-radius: 20px; text-decoration: none; backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.3);">← Back to Dashboard</a>
+        <a href="/" style="background: rgba(255,255,255,0.2); color: white; padding: 8px 15px; border-radius: 20px; text-decoration: none; backdrop-filter: blur(5px);">← Back to Dashboard</a>
     </nav>
 
     <div class="book-scene">
@@ -173,124 +178,88 @@
             
             <div class="leaf" id="leaf1" style="z-index: 4;">
                 <div class="front cover-front">
-                    
-                    <input type="file" id="photoInput" accept="image/*" style="display: none;">
-
-                    <div class="user-photo-frame" onclick="document.getElementById('photoInput').click()">
-                        <div class="user-photo-img" id="profileImageDiv">
+                    <div class="user-photo-frame">
+                         <div class="user-photo-img" id="profileImageDiv">
                             <span class="initial-text" id="initialText" th:text="${#strings.substring(user.username,0,1).toUpperCase()}">U</span>
                         </div>
                     </div>
-                    
-                    <div style="font-size: 0.8rem; color: #FFD700; opacity: 0.8; margin-top: -15px; margin-bottom: 15px;">
-                        (Click photo to change)
-                    </div>
-
-                    <h1 class="title-gold" style="font-size: 2.8rem; margin: 10px 0;">Health Diary</h1>
-                    <p style="color: #D7CCC8; letter-spacing: 3px;">PERSONAL RECORD</p>
-                    <div style="margin-top: 40px; border-top: 1px solid rgba(255,215,0,0.3); padding-top: 10px; width: 70%;">
-                        <p style="color: #fff;">Owner:</p>
-                        <h2 class="title-gold" th:text="${user.username}" style="text-decoration: underline;">User</h2>
-                    </div>
+                    <h1 class="title-gold">Health Diary</h1>
+                    <p style="color: #D7CCC8;">PERSONAL RECORD</p>
                 </div>
-                <div class="back cover-inside">
-                    NutriCare Journal <br> Since 2025
+                <div class="back paper paper-left">
+                    <h3 class="handwriting" style="text-align: center;">Biodata</h3>
+                    <div class="data-row"><span>Name:</span> <strong th:text="${user.username}">-</strong></div>
+                    <div class="data-row"><span>Age:</span> <strong th:text="${user.age} + ' y.o'">-</strong></div>
+                    <div style="margin-top: 20px; text-align:center; font-style:italic; opacity:0.7;">
+                        "Health is the greatest gift."
+                    </div>
                 </div>
             </div>
 
             <div class="leaf" id="leaf2" style="z-index: 3;">
                 <div class="front paper">
-                    <h3 class="handwriting">Patient Profile</h3>
-                    <div class="data-row"><span>Name:</span> <strong th:text="${user.username}">-</strong></div>
-                    <div class="data-row"><span>Age:</span> <strong th:text="${user.age} + ' y.o'">-</strong></div>
-                    <div class="data-row"><span>Gender:</span> <strong th:text="${user.gender}">-</strong></div>
-                    <div class="data-row"><span>Weight:</span> <strong th:text="${user.weight} + ' kg'">-</strong></div>
-                    <div style="margin-top: 20px; background: rgba(255,0,0,0.05); padding: 10px; border-radius: 8px;">
-                        <span style="color: #D32F2F; font-weight: bold;">⚠️ Allergies:</span>
-                        <p style="font-family: 'Patrick Hand'; margin-top: 5px;" th:text="${user.allergies}">None</p>
+                    <h3 class="handwriting" style="color: #5D4037;">Case Directory</h3>
+                    <p style="font-size: 0.9rem; color: #777;">Select a case to view timeline & follow up.</p>
+                    
+                    <div id="caseListContainer" style="height: 400px; overflow-y: auto; margin-top: 15px;">
+                        <p style="text-align:center;">Loading cases...</p>
                     </div>
-                    <div style="text-align: center; margin-top: 30px;">
-                        <a href="/profile" class="btn-glow" style="display:inline-block; width: auto; font-size: 0.9rem; padding: 8px 20px; text-decoration: none; background: #8E24AA;">Edit Data ✏️</a>
-                    </div>
+                    
                     <div style="position: absolute; bottom: 20px; right: 20px; color: #aaa;">1</div>
                 </div>
                 <div class="back paper paper-left">
-                    <h3 class="handwriting" style="text-align: center;">Summary</h3>
-                    <p style="font-family: 'Patrick Hand'; text-align: justify;">
-                        "Kesehatan adalah investasi. Berdasarkan catatan, Anda sering mengalami keluhan lambung. Perhatikan pola makan pedas."
-                    </p>
-                    <div style="text-align: center; margin-top: 50px; opacity: 0.5;">🌿</div>
+                    <h3 class="handwriting" id="detailTitle" style="color: #E65100;">...</h3>
+                    <div style="background: rgba(230, 81, 0, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                        <strong>Initial Advice:</strong>
+                        <p id="detailNotes" style="font-family: 'Patrick Hand'; font-size: 1rem; margin-top: 5px;">...</p>
+                    </div>
+                    <div style="text-align: center; margin-top: 50px;">
+                        <img src="https://cdn-icons-png.flaticon.com/512/2966/2966486.png" width="80" style="opacity: 0.5;">
+                    </div>
                 </div>
             </div>
 
             <div class="leaf" id="leaf3" style="z-index: 2;">
                 <div class="front paper">
-                    <h3 class="handwriting" style="color: #E65100;">History Timeline</h3>
-                    <div style="height: 450px; overflow-y: auto; padding-right: 5px;">
-                        <div style="margin-bottom: 20px; border-left: 3px solid #E65100; padding-left: 10px;">
-                            <small style="color: #888;">Dec 28, 2025</small>
-                            <h4 style="margin: 3px 0;">Maag (Gastritis)</h4>
-                            <span style="background: #FFF9C4; font-size: 0.8rem; padding: 2px 6px; border-radius: 4px;">😐 No Change</span>
-                        </div>
-                        <div style="margin-bottom: 20px; border-left: 3px solid #43A047; padding-left: 10px;">
-                            <small style="color: #888;">Dec 25, 2025</small>
-                            <h4 style="margin: 3px 0;">Flu</h4>
-                            <span style="background: #C8E6C9; font-size: 0.8rem; padding: 2px 6px; border-radius: 4px;">😊 Better</span>
-                        </div>
+                    <div style="height: 250px; overflow-y: auto; border-bottom: 2px dashed #ccc; margin-bottom: 15px; padding-right: 5px;" id="timelineContainer">
+                        <p style="text-align: center; margin-top: 50px; color: #999;">Select a case to see history.</p>
                     </div>
-                    <div style="position: absolute; bottom: 20px; right: 20px; color: #aaa;">2</div>
-                </div>
-                <div class="back paper paper-left">
-                    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; opacity: 0.2;">
-                        <img src="https://cdn-icons-png.flaticon.com/512/2966/2966327.png" width="120">
-                        <p style="margin-top: 10px; font-family: 'Patrick Hand';">Write your story...</p>
-                    </div>
-                </div>
-            </div>
 
-            <div class="leaf" id="leaf4" style="z-index: 1;">
-                <div class="front paper">
-                    <h3 class="handwriting" style="color: #1976D2;">New Entry</h3>
-                    <form>
-                        <label style="font-weight: bold; font-family: 'Patrick Hand';">Condition Today:</label>
-                        <select class="glass-input" style="background: rgba(25, 118, 210, 0.05); margin-bottom: 15px;">
-                            <option>😊 Feeling Better</option>
-                            <option>😐 No Change</option>
-                            <option>🤒 Worse</option>
+                    <h4 style="font-family: 'Dancing Script'; font-size: 1.5rem; margin: 0; color: #1976D2;">Add Update</h4>
+                    <form onsubmit="event.preventDefault(); submitFollowUp();">
+                        <input type="hidden" id="selectedCaseId"> <select id="conditionInput" class="glass-input" style="padding: 5px; margin-bottom: 5px; width: 100%;">
+                            <option value="Better">😊 Feeling Better</option>
+                            <option value="Same">😐 No Change</option>
+                            <option value="Worse">🤒 Getting Worse</option>
                         </select>
-                        <label style="font-weight: bold; font-family: 'Patrick Hand';">Notes:</label>
-                        <textarea rows="6" class="glass-input" style="background: rgba(25, 118, 210, 0.05); resize: none; font-family: 'Patrick Hand'; font-size: 1.1rem;"></textarea>
-                        <button type="button" class="btn-glow" style="width: 100%; margin-top: 10px; background: #1976D2;">Save Record 💾</button>
+                        <textarea id="notesInput" rows="2" class="glass-input" placeholder="Today's notes..." style="width: 100%; font-family: 'Patrick Hand';"></textarea>
+                        <button type="submit" class="btn-glow" style="width: 100%; margin-top: 5px; padding: 8px; font-size: 0.9rem;">Save Entry 💾</button>
                     </form>
-                    <div style="position: absolute; bottom: 20px; right: 20px; color: #aaa;">3</div>
+                    
+                    <div style="position: absolute; bottom: 20px; right: 20px; color: #aaa;">2</div>
                 </div>
                 <div class="back" style="background: #3E2723; border: 3px solid #281815;"></div>
             </div>
 
             <div class="bookmarks">
-                <div class="tab tab-1" onclick="gotoPage(1)" title="Biodata">👤</div>
-                <div class="tab tab-2" onclick="gotoPage(2)" title="History">📅</div>
-                <div class="tab tab-3" onclick="gotoPage(3)" title="New Entry">✍️</div>
+                <div class="tab tab-1" onclick="gotoPage(0)" title="Cover">🏠</div>
+                <div class="tab tab-2" onclick="gotoPage(1)" title="Directory">📂</div>
+                <div class="tab tab-3" onclick="gotoPage(2)" title="Timeline">📝</div>
             </div>
         </div>
 
         <div class="controls">
             <button class="arrow-btn" id="prevBtn" onclick="flip(-1)">❮</button>
-            <div style="text-align: center; color: #fff; text-shadow: 1px 1px 2px #000;">
-                <span id="pageLabel" style="font-weight: bold; font-size: 1.2rem;">Cover</span>
-            </div>
             <button class="arrow-btn" id="nextBtn" onclick="flip(1)">❯</button>
         </div>
     </div>
 
     <script>
-        let currentState = 0;
-        const maxState = 3;
+        // --- LOGIC BUKU 3D (Standard) ---
+        let currentState = 0; 
+        const maxState = 2; // Hanya 3 leaf (0, 1, 2)
         const book = document.getElementById('book');
         const leaves = [document.getElementById('leaf1'), document.getElementById('leaf2'), document.getElementById('leaf3')];
-        const prevBtn = document.getElementById('prevBtn');
-        const nextBtn = document.getElementById('nextBtn');
-        const label = document.getElementById('pageLabel');
 
         function updateBook() {
             if (currentState > 0) book.classList.add('open');
@@ -305,52 +274,127 @@
                     leaf.style.zIndex = 4 - index;
                 }
             });
-
-            let text = "Cover";
-            if (currentState === 1) text = "Biodata";
-            if (currentState === 2) text = "History Timeline";
-            if (currentState === 3) text = "New Entry";
-            label.innerText = text;
-
-            prevBtn.disabled = (currentState === 0);
-            nextBtn.disabled = (currentState === maxState);
         }
-
         function flip(dir) {
             currentState += dir;
             if (currentState < 0) currentState = 0;
             if (currentState > maxState) currentState = maxState;
             updateBook();
         }
-
-        function gotoPage(num) {
-            currentState = num;
-            updateBook();
-        }
-
+        function gotoPage(num) { currentState = num; updateBook(); }
         updateBook();
 
-        // --- FIX SCRIPT UPLOAD FOTO (TARGET YANG BENAR) ---
-        const photoInput = document.getElementById('photoInput');
-        const profileImageDiv = document.getElementById('profileImageDiv'); // Target Div DALAM
-        const initialText = document.getElementById('initialText');
+        // --- LOGIC BARU: CASE DIRECTORY & TIMELINE ---
 
-        photoInput.addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    // Set gambar hanya ke div DALAM, jadi frame luar (Border Emas) aman
-                    profileImageDiv.style.backgroundImage = `url(${e.target.result})`;
-                    profileImageDiv.style.backgroundSize = 'cover';
-                    profileImageDiv.style.backgroundPosition = 'center';
-                    
-                    // Sembunyikan huruf inisial
-                    if(initialText) initialText.style.display = 'none';
+        // 1. Load Daftar Kasus saat halaman dibuka
+        window.addEventListener('DOMContentLoaded', loadCases);
+
+        async function loadCases() {
+            const container = document.getElementById('caseListContainer');
+            try {
+                const response = await fetch('/api/cases');
+                const data = await response.json();
+
+                if(data.length === 0) {
+                    container.innerHTML = "<p style='text-align:center'>No records yet.</p>";
+                    return;
                 }
-                reader.readAsDataURL(file);
-            }
-        });
+
+                let html = "";
+                data.forEach(item => {
+                    // Buat Item List yang bisa diklik
+                    html += `
+                        <div onclick="selectCase(${item.id}, '${item.diseaseName}', '${escapeHtml(item.additionalNotes)}')" 
+                             style="padding: 10px; border-bottom: 1px solid #ddd; cursor: pointer; transition: 0.2s;"
+                             onmouseover="this.style.background='rgba(0,0,0,0.05)'"
+                             onmouseout="this.style.background='transparent'">
+                            <strong style="color: #5D4037; font-size: 1.1rem;">${item.diseaseName}</strong> <br>
+                            <small style="color: #888;">${new Date(item.createdAt).toLocaleDateString()}</small>
+                            <span style="float: right;">➔</span>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (e) { console.error(e); }
+        }
+
+        // 2. Saat Kasus Dipilih (Klik Item di Directory)
+        async function selectCase(id, name, notes) {
+            // A. Set Data Halaman Detail
+            document.getElementById('selectedCaseId').value = id;
+            document.getElementById('detailTitle').innerText = name;
+            document.getElementById('detailNotes').innerText = notes.substring(0, 150) + "..."; // Potong biar muat
+
+            // B. Load Timeline Follow Up
+            await loadTimeline(id);
+
+            // C. Buka Halaman Timeline (Flip ke Page 2)
+            gotoPage(2);
+        }
+
+        async function loadTimeline(id) {
+            const container = document.getElementById('timelineContainer');
+            container.innerHTML = "<p style='text-align:center'>Loading history...</p>";
+            
+            try {
+                const response = await fetch(`/api/cases/${id}/timeline`);
+                const data = await response.json();
+
+                if(data.length === 0) {
+                    container.innerHTML = "<p style='text-align:center; margin-top:20px;'>No follow-ups yet. Start tracking!</p>";
+                    return;
+                }
+
+                let html = "";
+                data.forEach(item => {
+                    html += `
+                        <div style="margin-bottom: 15px; border-left: 3px solid #E65100; padding-left: 10px;">
+                            <small style="color: #888; font-weight:bold;">${new Date(item.date).toLocaleDateString()}</small>
+                            <br>
+                            <span style="background: #FFF3E0; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem;">${item.userCondition}</span>
+                            <p style="margin: 5px 0; font-family:'Patrick Hand'; font-size: 1rem;">"${item.userNotes}"</p>
+                            <div style="background: rgba(76, 175, 80, 0.1); padding: 5px; border-radius: 5px; font-size: 0.8rem; color: #2E7D32;">
+                                🤖 <strong>AI:</strong> ${item.aiAdvice}
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+
+            } catch (e) { console.error(e); }
+        }
+
+        // 3. Submit Follow Up Baru
+        async function submitFollowUp() {
+            const id = document.getElementById('selectedCaseId').value;
+            const condition = document.getElementById('conditionInput').value;
+            const notes = document.getElementById('notesInput').value;
+
+            if(!id) { alert("Please select a case from Directory first!"); gotoPage(1); return; }
+            if(!notes) { alert("Please write a note."); return; }
+
+            try {
+                const res = await fetch(`/api/recommend/feedback/${id}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ condition, notes })
+                });
+                
+                if(res.ok) {
+                    const result = await res.json();
+                    alert("✅ Saved! AI says: " + result.message);
+                    document.getElementById('notesInput').value = ""; // Reset input
+                    loadTimeline(id); // Reload list timeline biar muncul yg baru
+                } else {
+                    alert("Failed to save.");
+                }
+            } catch (e) { alert("Error connecting."); }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return "";
+            return text.replace(/['"]/g, ""); // Bersihkan kutip biar gak ngerusak JS onclick
+        }
     </script>
 </body>
 </html>

@@ -7,6 +7,7 @@ D:\OOP\AoL\Food_Recomendation_AI\food-recomendation\src\main\java\com\foodrec\se
 D:\OOP\AoL\Food_Recomendation_AI\food-recomendation\src\main\java\com\foodrec\model\AcuteDisease.java
 D:\OOP\AoL\Food_Recomendation_AI\food-recomendation\src\main\java\com\foodrec\model\Disease.java
 D:\OOP\AoL\Food_Recomendation_AI\food-recomendation\src\main\java\com\foodrec\controller\RecommendationController.java
+D:\OOP\AoL\Food_Recomendation_AI\food-recomendation\src\main\java\com\foodrec\repository\FollowUpRepository.java
 D:\OOP\AoL\Food_Recomendation_AI\food-recomendation\src\main\java\com\foodrec\util\HTTPClient.java
 D:\OOP\AoL\Food_Recomendation_AI\food-recomendation\src\main\java\com\foodrec\service\RecommendationService.java
 D:\OOP\AoL\Food_Recomendation_AI\food-recomendation\src\main\java\com\foodrec\entity\UserEntity.java
@@ -17,5 +18,6 @@ D:\OOP\AoL\Food_Recomendation_AI\food-recomendation\src\main\java\com\foodrec\se
 D:\OOP\AoL\Food_Recomendation_AI\food-recomendation\src\main\java\com\foodrec\controller\WebController.java
 D:\OOP\AoL\Food_Recomendation_AI\food-recomendation\src\main\java\com\foodrec\model\ChronicDisease.java
 D:\OOP\AoL\Food_Recomendation_AI\food-recomendation\src\main\java\com\foodrec\config\WebConfig.java
+D:\OOP\AoL\Food_Recomendation_AI\food-recomendation\src\main\java\com\foodrec\entity\FollowUpEntity.java
 D:\OOP\AoL\Food_Recomendation_AI\food-recomendation\src\main\java\com\foodrec\service\AIService.java
 D:\OOP\AoL\Food_Recomendation_AI\food-recomendation\src\main\java\com\foodrec\entity\DiseaseEntity.java

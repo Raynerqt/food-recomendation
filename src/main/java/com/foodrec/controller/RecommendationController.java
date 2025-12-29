@@ -1,11 +1,13 @@
 package com.foodrec.controller;
 
+import com.foodrec.entity.FollowUpEntity;
 import com.foodrec.entity.RecommendationEntity;
 import com.foodrec.entity.UserEntity;
 import com.foodrec.model.AcuteDisease;
 import com.foodrec.model.ChronicDisease;
 import com.foodrec.model.Disease;
 import com.foodrec.model.FoodRecommendation;
+import com.foodrec.repository.FollowUpRepository;
 import com.foodrec.repository.UserRepository;
 import com.foodrec.service.AIService;
 import com.foodrec.service.RecommendationService;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 
 /**
  * REST Controller for Food Recommendation
@@ -123,6 +126,7 @@ public class RecommendationController {
                 .body(createErrorResponse("Server Error: " + e.getMessage()));
         }
     }
+    
 
     // ================== ENDPOINT DETAILED ==================
     
@@ -162,14 +166,70 @@ public class RecommendationController {
         }
     }
 
+@Autowired private FollowUpRepository followUpRepository; // Inject ini
+
+    // 1. ENDPOINT: SIMPAN FOLLOW UP BARU (Update Logic)
+    @PostMapping("/recommend/feedback/{id}")
+    public ResponseEntity<?> submitFeedback(@PathVariable Long id, @RequestBody Map<String, String> request) {
+        try {
+            // Cari Kasus Induknya
+            RecommendationEntity parentCase = recommendationService.getRecommendationById(id)
+                    .orElseThrow(() -> new RuntimeException("Case not found"));
+
+            String userCondition = request.get("condition");
+            String userNotes = request.get("notes");
+            
+            // Analisa AI
+            String promptData = "Original Disease: " + parentCase.getDiseaseName() + 
+                                ". User Update: " + userCondition + " - " + userNotes;
+            Map<String, String> aiResult = aiService.analyzeCondition(parentCase.getDiseaseName(), promptData);
+
+            // Simpan ke Tabel FollowUpEntity (Bukan di RecommendationEntity lagi)
+            FollowUpEntity entry = new FollowUpEntity();
+            entry.setUserCondition(userCondition);
+            entry.setUserNotes(userNotes);
+            entry.setAiAdvice(aiResult.get("message"));
+            
+            // Hubungkan & Simpan
+            parentCase.addFollowUp(entry);
+            recommendationService.saveRecommendationEntity(parentCase); // Ini akan otomatis simpan followUp juga
+
+            return ResponseEntity.ok(aiResult);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(createErrorResponse(e.getMessage()));
+        }
+    }
+
+    // 2. ENDPOINT BARU: AMBIL LIST KASUS (Untuk Daftar Isi Jurnal)
+    @GetMapping("/cases")
+    public ResponseEntity<?> getMyCases(Principal principal) {
+        if (principal == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        // Gunakan pagination 100 agar semua kasus termuat di daftar isi
+        Page<RecommendationEntity> cases = recommendationService.getAllRecommendations(principal.getName(), 0, 100);
+        return ResponseEntity.ok(cases.getContent());
+    }
+
+    // 3. ENDPOINT BARU: AMBIL TIMELINE PER KASUS
+    @GetMapping("/cases/{id}/timeline")
+    public ResponseEntity<?> getCaseTimeline(@PathVariable Long id) {
+        List<FollowUpEntity> timeline = followUpRepository.findByRecommendationIdOrderByDateDesc(id);
+        return ResponseEntity.ok(timeline);
+    }
     // ================== HISTORY & HELPER ==================
 
     @GetMapping("/history")
     public ResponseEntity<?> getHistory(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            Principal principal) { // Tambahkan Principal
         try {
-            Page<RecommendationEntity> history = recommendationService.getAllRecommendations(page, size);
+            // Ambil username dari principal (jika ada)
+            String username = (principal != null) ? principal.getName() : null;
+            
+            // Panggil service dengan 3 parameter
+            Page<RecommendationEntity> history = recommendationService.getAllRecommendations(username, page, size);
+            
             Map<String, Object> response = new HashMap<>();
             response.put("content", history.getContent());
             response.put("totalPages", history.getTotalPages());
@@ -207,4 +267,6 @@ public class RecommendationController {
         error.put("timestamp", String.valueOf(System.currentTimeMillis()));
         return error;
     }
+
+    
 }

@@ -139,4 +139,17 @@ public class UserEntity {
     
     public LocalDateTime getLastLogin() { return lastLogin; }
     public void setLastLogin(LocalDateTime lastLogin) { this.lastLogin = lastLogin; }
+
+    @Lob // Menandakan ini data besar (Large Object)
+    @Column(name = "profile_image", columnDefinition = "LONGBLOB") 
+    private byte[] profileImage;
+
+    // Getter & Setter Wajib
+    public byte[] getProfileImage() {
+        return profileImage;
+    }
+
+    public void setProfileImage(byte[] profileImage) {
+        this.profileImage = profileImage;
+    }
 }

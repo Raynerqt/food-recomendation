@@ -20,6 +20,9 @@ public interface RecommendationRepository extends JpaRepository<RecommendationEn
     /**
      * Find all recommendations by disease name
      */
+
+    Page<RecommendationEntity> findByUserId(Long userId, Pageable pageable);
+    
     List<RecommendationEntity> findByDiseaseName(String diseaseName);
     
     /**

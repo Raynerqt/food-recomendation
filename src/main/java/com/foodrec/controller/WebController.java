@@ -9,6 +9,11 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ResponseBody;
+import java.io.IOException;
 
 import java.security.Principal;
 
@@ -34,23 +39,22 @@ public class WebController {
     // --- INI METHOD HOME YANG BENAR (Hanya Boleh Satu) ---
     @GetMapping("/")
     public String home(Model model, Principal principal) {
-        if (principal != null) {
-            String username = principal.getName();
-            UserEntity user = userRepository.findByUsername(username).orElse(null);
-            
-            if (user != null) {
-                // LOGIKA: Jika umur masih kosong, WAJIB isi profil dulu
-                if (user.getAge() == null) {
-                    return "redirect:/profile";
-                }
-                model.addAttribute("username", user.getUsername()); // Pakai nama asli/username
+        // Kita tidak perlu lagi cek 'if (principal != null)' untuk redirect login
+        // karena SecurityConfig sudah menahannya di depan pintu.
+        
+        String username = principal.getName();
+        UserEntity user = userRepository.findByUsername(username).orElse(null);
+        
+        if (user != null) {
+            // Cek apakah user baru (belum isi umur)? Lempar ke Profile
+            if (user.getAge() == null) {
+                return "redirect:/profile";
             }
-        } else {
-            return "redirect:/login";
+            model.addAttribute("username", user.getUsername());
         }
-        return "index";
+        
+        return "index"; // Buka Dashboard
     }
-
     @GetMapping("/profile")
     public String showProfile(Model model, Principal principal) {
         if (principal == null) return "redirect:/login";
@@ -122,5 +126,39 @@ public class WebController {
         userRepository.save(newUser);
 
         return "redirect:/login";
+    }
+    // 1. ENDPOINT UPLOAD FOTO
+    @PostMapping("/profile/upload")
+    public String uploadProfilePhoto(@RequestParam("photo") MultipartFile file, Principal principal) {
+        if (principal != null && !file.isEmpty()) {
+            try {
+                String username = principal.getName();
+                UserEntity user = userRepository.findByUsername(username).orElseThrow();
+                
+                // Konversi file gambar menjadi byte[] dan simpan ke database
+                user.setProfileImage(file.getBytes());
+                userRepository.save(user);
+                
+            } catch (IOException e) {
+                e.printStackTrace();
+                return "redirect:/journal?error=upload_failed";
+            }
+        }
+        return "redirect:/journal"; // Refresh halaman jurnal
+    }
+
+    // 2. ENDPOINT MENAMPILKAN FOTO (Agar bisa dilihat di <img>)
+    @GetMapping("/profile/image")
+    @ResponseBody
+    public ResponseEntity<byte[]> getProfileImage(Principal principal) {
+        if (principal != null) {
+            UserEntity user = userRepository.findByUsername(principal.getName()).orElse(null);
+            if (user != null && user.getProfileImage() != null) {
+                return ResponseEntity.ok()
+                        .contentType(MediaType.IMAGE_JPEG) // Atau PNG, browser biasanya pintar deteksi
+                        .body(user.getProfileImage());
+            }
+        }
+        return ResponseEntity.notFound().build();
     }
 }
