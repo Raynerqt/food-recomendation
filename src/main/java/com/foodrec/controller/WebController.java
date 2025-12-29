@@ -61,6 +61,19 @@ public class WebController {
         model.addAttribute("user", user); // Kirim data user ke HTML
         return "profile";
     }
+
+    @GetMapping("/journal")
+    public String showJournal(Model model, Principal principal) {
+        if (principal != null) {
+            String username = principal.getName();
+            UserEntity user = userRepository.findByUsername(username).orElse(null);
+            model.addAttribute("user", user);
+            // Nanti di sini kita load data history follow-up dari database temanmu
+        } else {
+            return "redirect:/login";
+        }
+        return "history"; // Mengarah ke templates/history.html
+    }
     // -----------------------------------------------------
 
     @PostMapping("/profile")

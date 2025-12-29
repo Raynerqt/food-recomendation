@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Health Journal</title>
+    <link rel="stylesheet" th:href="@{/style.css}">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Dancing+Script:wght@600&family=Patrick+Hand&display=swap" rel="stylesheet">
+    <style>
+        /* --- BACKGROUND GELAP ELEGANT --- */
+        body { 
+            overflow-y: auto; 
+            overflow-x: hidden;
+            margin: 0;
+            /* Background Gambar Makanan Sehat (Flatlay) */
+            background: url('https://images.unsplash.com/photo-1490818387583-1baba5e638af?q=80&w=1932&auto=format&fit=crop') no-repeat center center/cover;
+            background-attachment: fixed;
+        }
+
+        /* OVERLAY GELAP (Dark Mode Vibe) */
+        /* Sebelumnya putih, sekarang kita ganti hitam transparan (0.6) */
+        body::before { 
+            content: ''; position: fixed; top:0; left:0; width:100%; height:100%; 
+            background: rgba(0, 0, 0, 0.65); /* <-- INI KUNCINYA (Gelap 65%) */
+            backdrop-filter: blur(4px); /* Blur lebih kuat biar fokus ke buku */
+            z-index: -1; 
+        }
+
+        /* Scene 3D */
+        .book-scene {
+            width: 100%; 
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            perspective: 2000px;
+            padding-top: 100px; 
+            padding-bottom: 100px;
+        }
+
+        /* --- BUKU & LEAF SYSTEM (Tetap Sama) --- */
+        .book {
+            position: relative;
+            width: 460px; height: 640px;
+            transform-style: preserve-3d;
+            transition: transform 0.8s;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8); /* Shadow lebih gelap */
+        }
+        .book.open { transform: translateX(230px); }
+
+        .leaf {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            transform-origin: left center;
+            transition: transform 1s cubic-bezier(0.645, 0.045, 0.355, 1);
+            transform-style: preserve-3d;
+        }
+
+        .front, .back {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            backface-visibility: hidden;
+            border-radius: 5px 15px 15px 5px;
+        }
+        .front { z-index: 2; }
+        .back { 
+            z-index: 1; 
+            transform: rotateY(180deg);
+            border-radius: 15px 5px 5px 15px; 
+        }
+
+        /* Z-Index Tumpukan */
+        #leaf1 { z-index: 4; }
+        #leaf2 { z-index: 3; }
+        #leaf3 { z-index: 2; }
+        #leaf4 { z-index: 1; }
+
+        /* --- COVER STYLE --- */
+        .cover-front {
+            background: #5D4037;
+            background-image: url("https://www.transparenttextures.com/patterns/leather.png");
+            border: 3px solid #3E2723;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
+        }
+        
+        /* --- FIX FOTO PROFIL (Wadah Terpisah) --- */
+        /* 1. Wadah Luar: Memegang Border Emas */
+        .user-photo-frame {
+            width: 150px; height: 150px; 
+            background: #EFEBE9; 
+            border: 6px solid #FFD700; /* BORDER EMAS DISINI */
+            border-radius: 50%;
+            margin-bottom: 20px; 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5); 
+            position: relative;
+            overflow: hidden; /* Pastikan gambar gak keluar lingkaran */
+            cursor: pointer;
+        }
+
+        /* 2. Wadah Dalam: Memegang Gambar */
+        .user-photo-img {
+            width: 100%; height: 100%;
+            background-size: cover;
+            background-position: center;
+            display: flex; justify-content: center; align-items: center;
+        }
+        
+        .initial-text {
+            font-size: 4rem; color: #5D4037; font-weight: bold;
+        }
+
+        /* Tombol + Kecil */
+        .photo-add-btn {
+            position: absolute; bottom: 10px; right: 10px; width: 35px; height: 35px; background: #FFD700;
+            border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.2rem;
+            border: 2px solid white; color: #3E2723; transition: 0.3s; z-index: 10;
+        }
+
+        .title-gold { font-family: 'Cinzel', serif; color: #FFD700; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+
+        /* ... (Style Kertas, Tabs, dll sama) ... */
+        .cover-inside {
+            background: #4E342E;
+            background-image: url("https://www.transparenttextures.com/patterns/leather.png");
+            border: 3px solid #3E2723; border-right: none;
+            display: flex; justify-content: center; align-items: center;
+            color: rgba(255,255,255,0.2); font-family: 'Cinzel', serif;
+        }
+        .paper {
+            background: #FFFDE7;
+            background-image: url("https://www.transparenttextures.com/patterns/cream-paper.png");
+            padding: 40px;
+            box-shadow: inset 10px 0 20px rgba(0,0,0,0.1);
+            border-left: 10px solid #d7ccc8;
+        }
+        .paper-left {
+            border-left: none; border-right: 10px solid #d7ccc8;
+            box-shadow: inset -10px 0 20px rgba(0,0,0,0.1);
+        }
+        h3.handwriting { font-family: 'Dancing Script', cursive; font-size: 2.2rem; color: #5D4037; border-bottom: 2px dashed #bbb; margin-bottom: 20px; }
+        .data-row { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 8px 0; font-family: 'Patrick Hand', cursive; font-size: 1.2rem; }
+        
+        .bookmarks {
+            position: absolute; right: -50px; top: 50px;
+            display: flex; flex-direction: column; gap: 10px; z-index: 0;
+        }
+        .tab {
+            width: 60px; height: 45px; background: #E65100; color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; border-radius: 0 10px 10px 0; cursor: pointer;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3); transition: 0.3s;
+        }
+        .tab:hover { margin-left: 5px; }
+        .tab-1 { background: #8E24AA; } .tab-2 { background: #E65100; } .tab-3 { background: #1976D2; }
+
+        .controls { margin-top: 30px; display: flex; gap: 20px; z-index: 100; }
+        .arrow-btn {
+            width: 50px; height: 50px; border-radius: 50%; border: none; background: #fff;
+            font-size: 1.5rem; cursor: pointer; color: #5D4037; box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: 0.3s;
+        }
+        .arrow-btn:hover:not(:disabled) { transform: scale(1.1); background: #FFD700; }
+        .arrow-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .flipped { transform: rotateY(-180deg); }
+
+    </style>
+</head>
+<body>
+
+    <nav class="navbar" style="background: transparent; box-shadow: none; position: absolute; top:0; width:100%; z-index:100;">
+        <h1 style="color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">📜 My Health Journal</h1>
+        <a href="/" style="background: rgba(255,255,255,0.2); color: white; padding: 8px 15px; border-radius: 20px; text-decoration: none; backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.3);">← Back to Dashboard</a>
+    </nav>
+
+    <div class="book-scene">
+        <div class="book" id="book">
+            
+            <div class="leaf" id="leaf1" style="z-index: 4;">
+                <div class="front cover-front">
+                    
+                    <input type="file" id="photoInput" accept="image/*" style="display: none;">
+
+                    <div class="user-photo-frame" onclick="document.getElementById('photoInput').click()">
+                        <div class="user-photo-img" id="profileImageDiv">
+                            <span class="initial-text" id="initialText" th:text="${#strings.substring(user.username,0,1).toUpperCase()}">U</span>
+                        </div>
+                    </div>
+                    
+                    <div style="font-size: 0.8rem; color: #FFD700; opacity: 0.8; margin-top: -15px; margin-bottom: 15px;">
+                        (Click photo to change)
+                    </div>
+
+                    <h1 class="title-gold" style="font-size: 2.8rem; margin: 10px 0;">Health Diary</h1>
+                    <p style="color: #D7CCC8; letter-spacing: 3px;">PERSONAL RECORD</p>
+                    <div style="margin-top: 40px; border-top: 1px solid rgba(255,215,0,0.3); padding-top: 10px; width: 70%;">
+                        <p style="color: #fff;">Owner:</p>
+                        <h2 class="title-gold" th:text="${user.username}" style="text-decoration: underline;">User</h2>
+                    </div>
+                </div>
+                <div class="back cover-inside">
+                    NutriCare Journal <br> Since 2025
+                </div>
+            </div>
+
+            <div class="leaf" id="leaf2" style="z-index: 3;">
+                <div class="front paper">
+                    <h3 class="handwriting">Patient Profile</h3>
+                    <div class="data-row"><span>Name:</span> <strong th:text="${user.username}">-</strong></div>
+                    <div class="data-row"><span>Age:</span> <strong th:text="${user.age} + ' y.o'">-</strong></div>
+                    <div class="data-row"><span>Gender:</span> <strong th:text="${user.gender}">-</strong></div>
+                    <div class="data-row"><span>Weight:</span> <strong th:text="${user.weight} + ' kg'">-</strong></div>
+                    <div style="margin-top: 20px; background: rgba(255,0,0,0.05); padding: 10px; border-radius: 8px;">
+                        <span style="color: #D32F2F; font-weight: bold;">⚠️ Allergies:</span>
+                        <p style="font-family: 'Patrick Hand'; margin-top: 5px;" th:text="${user.allergies}">None</p>
+                    </div>
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a href="/profile" class="btn-glow" style="display:inline-block; width: auto; font-size: 0.9rem; padding: 8px 20px; text-decoration: none; background: #8E24AA;">Edit Data ✏️</a>
+                    </div>
+                    <div style="position: absolute; bottom: 20px; right: 20px; color: #aaa;">1</div>
+                </div>
+                <div class="back paper paper-left">
+                    <h3 class="handwriting" style="text-align: center;">Summary</h3>
+                    <p style="font-family: 'Patrick Hand'; text-align: justify;">
+                        "Kesehatan adalah investasi. Berdasarkan catatan, Anda sering mengalami keluhan lambung. Perhatikan pola makan pedas."
+                    </p>
+                    <div style="text-align: center; margin-top: 50px; opacity: 0.5;">🌿</div>
+                </div>
+            </div>
+
+            <div class="leaf" id="leaf3" style="z-index: 2;">
+                <div class="front paper">
+                    <h3 class="handwriting" style="color: #E65100;">History Timeline</h3>
+                    <div style="height: 450px; overflow-y: auto; padding-right: 5px;">
+                        <div style="margin-bottom: 20px; border-left: 3px solid #E65100; padding-left: 10px;">
+                            <small style="color: #888;">Dec 28, 2025</small>
+                            <h4 style="margin: 3px 0;">Maag (Gastritis)</h4>
+                            <span style="background: #FFF9C4; font-size: 0.8rem; padding: 2px 6px; border-radius: 4px;">😐 No Change</span>
+                        </div>
+                        <div style="margin-bottom: 20px; border-left: 3px solid #43A047; padding-left: 10px;">
+                            <small style="color: #888;">Dec 25, 2025</small>
+                            <h4 style="margin: 3px 0;">Flu</h4>
+                            <span style="background: #C8E6C9; font-size: 0.8rem; padding: 2px 6px; border-radius: 4px;">😊 Better</span>
+                        </div>
+                    </div>
+                    <div style="position: absolute; bottom: 20px; right: 20px; color: #aaa;">2</div>
+                </div>
+                <div class="back paper paper-left">
+                    <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; opacity: 0.2;">
+                        <img src="https://cdn-icons-png.flaticon.com/512/2966/2966327.png" width="120">
+                        <p style="margin-top: 10px; font-family: 'Patrick Hand';">Write your story...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="leaf" id="leaf4" style="z-index: 1;">
+                <div class="front paper">
+                    <h3 class="handwriting" style="color: #1976D2;">New Entry</h3>
+                    <form>
+                        <label style="font-weight: bold; font-family: 'Patrick Hand';">Condition Today:</label>
+                        <select class="glass-input" style="background: rgba(25, 118, 210, 0.05); margin-bottom: 15px;">
+                            <option>😊 Feeling Better</option>
+                            <option>😐 No Change</option>
+                            <option>🤒 Worse</option>
+                        </select>
+                        <label style="font-weight: bold; font-family: 'Patrick Hand';">Notes:</label>
+                        <textarea rows="6" class="glass-input" style="background: rgba(25, 118, 210, 0.05); resize: none; font-family: 'Patrick Hand'; font-size: 1.1rem;"></textarea>
+                        <button type="button" class="btn-glow" style="width: 100%; margin-top: 10px; background: #1976D2;">Save Record 💾</button>
+                    </form>
+                    <div style="position: absolute; bottom: 20px; right: 20px; color: #aaa;">3</div>
+                </div>
+                <div class="back" style="background: #3E2723; border: 3px solid #281815;"></div>
+            </div>
+
+            <div class="bookmarks">
+                <div class="tab tab-1" onclick="gotoPage(1)" title="Biodata">👤</div>
+                <div class="tab tab-2" onclick="gotoPage(2)" title="History">📅</div>
+                <div class="tab tab-3" onclick="gotoPage(3)" title="New Entry">✍️</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="arrow-btn" id="prevBtn" onclick="flip(-1)">❮</button>
+            <div style="text-align: center; color: #fff; text-shadow: 1px 1px 2px #000;">
+                <span id="pageLabel" style="font-weight: bold; font-size: 1.2rem;">Cover</span>
+            </div>
+            <button class="arrow-btn" id="nextBtn" onclick="flip(1)">❯</button>
+        </div>
+    </div>
+
+    <script>
+        let currentState = 0;
+        const maxState = 3;
+        const book = document.getElementById('book');
+        const leaves = [document.getElementById('leaf1'), document.getElementById('leaf2'), document.getElementById('leaf3')];
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const label = document.getElementById('pageLabel');
+
+        function updateBook() {
+            if (currentState > 0) book.classList.add('open');
+            else book.classList.remove('open');
+
+            leaves.forEach((leaf, index) => {
+                if (currentState > index) {
+                    leaf.classList.add('flipped');
+                    leaf.style.zIndex = index;
+                } else {
+                    leaf.classList.remove('flipped');
+                    leaf.style.zIndex = 4 - index;
+                }
+            });
+
+            let text = "Cover";
+            if (currentState === 1) text = "Biodata";
+            if (currentState === 2) text = "History Timeline";
+            if (currentState === 3) text = "New Entry";
+            label.innerText = text;
+
+            prevBtn.disabled = (currentState === 0);
+            nextBtn.disabled = (currentState === maxState);
+        }
+
+        function flip(dir) {
+            currentState += dir;
+            if (currentState < 0) currentState = 0;
+            if (currentState > maxState) currentState = maxState;
+            updateBook();
+        }
+
+        function gotoPage(num) {
+            currentState = num;
+            updateBook();
+        }
+
+        updateBook();
+
+        // --- FIX SCRIPT UPLOAD FOTO (TARGET YANG BENAR) ---
+        const photoInput = document.getElementById('photoInput');
+        const profileImageDiv = document.getElementById('profileImageDiv'); // Target Div DALAM
+        const initialText = document.getElementById('initialText');
+
+        photoInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // Set gambar hanya ke div DALAM, jadi frame luar (Border Emas) aman
+                    profileImageDiv.style.backgroundImage = `url(${e.target.result})`;
+                    profileImageDiv.style.backgroundSize = 'cover';
+                    profileImageDiv.style.backgroundPosition = 'center';
+                    
+                    // Sembunyikan huruf inisial
+                    if(initialText) initialText.style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
+</body>
+</html>
