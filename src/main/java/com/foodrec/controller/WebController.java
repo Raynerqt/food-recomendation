@@ -14,6 +14,10 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ResponseBody;
 import java.io.IOException;
+import com.foodrec.repository.DoctorRepository; // Tambah ini
+import com.foodrec.entity.DoctorEntity; // Tambah ini
+import java.util.List;
+import java.util.Map;
 
 import java.security.Principal;
 
@@ -25,6 +29,9 @@ public class WebController {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired 
+    private DoctorRepository doctorRepository; 
 
     @GetMapping("/login")
     public String login() {
@@ -129,22 +136,32 @@ public class WebController {
     }
     // 1. ENDPOINT UPLOAD FOTO
     @PostMapping("/profile/upload")
-    public String uploadProfilePhoto(@RequestParam("photo") MultipartFile file, Principal principal) {
+    @ResponseBody // Penting agar return text/json, bukan redirect halaman
+    public ResponseEntity<?> uploadProfilePhoto(@RequestParam("photo") MultipartFile file, Principal principal) {
         if (principal != null && !file.isEmpty()) {
             try {
                 String username = principal.getName();
                 UserEntity user = userRepository.findByUsername(username).orElseThrow();
                 
-                // Konversi file gambar menjadi byte[] dan simpan ke database
                 user.setProfileImage(file.getBytes());
                 userRepository.save(user);
                 
+                return ResponseEntity.ok(Map.of("status", "success", "message", "Photo updated!"));
             } catch (IOException e) {
-                e.printStackTrace();
-                return "redirect:/journal?error=upload_failed";
+                return ResponseEntity.status(500).body(Map.of("status", "error", "message", e.getMessage()));
             }
         }
-        return "redirect:/journal"; // Refresh halaman jurnal
+        return ResponseEntity.badRequest().body(Map.of("status", "error", "message", "File empty or user not found"));
+    }
+
+    // --- ENDPOINT DATA DOKTER (Baru) ---
+    @GetMapping("/api/doctors")
+    @ResponseBody
+    public List<DoctorEntity> getDoctors(@RequestParam(required = false) String type) {
+        if (type != null && !type.isEmpty() && !type.equals("All")) {
+            return doctorRepository.findBySpecialization(type);
+        }
+        return doctorRepository.findAll();
     }
 
     // 2. ENDPOINT MENAMPILKAN FOTO (Agar bisa dilihat di <img>)
@@ -161,4 +178,6 @@ public class WebController {
         }
         return ResponseEntity.notFound().build();
     }
+
+    
 }
